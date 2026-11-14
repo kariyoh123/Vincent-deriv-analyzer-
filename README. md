@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vincent Deriv Analyzer</title>
+<style>
+body{margin:0;background:#101827;color:white;font-family:Arial,sans-serif;padding:18px}
+h1{color:#00e5a0;text-align:center}
+.card{background:#1d2b40;padding:16px;border-radius:12px;margin:12px 0}
+button{background:#00c98d;color:#071b18;border:0;padding:13px;border-radius:8px;font-weight:bold;margin:5px}
+input{padding:12px;border-radius:7px;width:85%;margin:6px}
+.digit{display:inline-block;background:#263b54;padding:12px;margin:4px;border-radius:7px}
+.big{font-size:28px;color:#00e5a0}
+</style>
+</head>
+<body>
+<h1>Vincent Deriv Analyzer</h1>
+<div class="card">
+<h3>Live Market Connection</h3>
+<input id="token" type="password" placeholder="Optional Deriv API token">
+<br>
+<button onclick="connect()">Connect to Deriv</button>
+<button onclick="disconnect()">Disconnect</button>
+<p id="status">Not connected</p>
+</div>
+<div class="card">
+<h3>Market</h3>
+<select id="market">
+<option value="R_100">Volatility 100 Index</option>
+<option value="R_75">Volatility 75 Index</option>
+<option value="R_50">Volatility 50 Index</option>
+<option value="R_25">Volatility 25 Index</option>
+<option value="R_10">Volatility 10 Index</option>
+</select>
+<button onclick="subscribe()">Start Analysis</button>
+</div>
+<div class="card">
+<h3>Latest Digit</h3>
+<div class="big" id="last">--</div>
+<p id="price">Waiting for market data...</p>
+</div>
+<div class="card">
+<h3>Digit Frequency</h3>
+<div id="digits"></div>
+</div>
+<div class="card">
+<h3>Matches & Differs Analysis</h3>
+<p id="matches">Matches: collecting data...</p>
+<p id="differs">Differs: collecting data...</p>
+<p id="signal">Signal: insufficient data</p>
+</div>
+<div class="card">
+<h3>Recent Digits</h3>
+<p id="history">No data yet</p>
+</div>
+<script>
+let ws=null,history=[],counts=Array(10).fill(0);
+function connect(){
+if(ws)ws.close();
+ws=new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
+ws.onopen=()=>{
+document.getElementById("status").textContent="Connected to Deriv";
+let token=document.getElementById("token").value.trim();
+if(token)ws.send(JSON.stringify({authorize:token}));
+};
+ws.onmessage=e=>{
+let d=JSON.parse(e.data);
+if(d.error)document.getElementById("status").textContent=d.error.message;
+if(d.msg_type==="authorize")document.getElementById("status").textContent="Authorized";
+if(d.msg_type==="tick")processTick(d.tick);
+};
+ws.onerror=()=>document.getElementById("status").textContent="Connection error";
+ws.onclose=()=>document.getElementById("status").textContent="Disconnected";
+}
+function subscribe(){
+if(!ws||ws.readyState!==1){alert("Connect first");return;}
+history=[];counts=Array(10).fill(0);
+ws.send(JSON.stringify({ticks:document.getElementById("market").value,subscribe:1}));
+}
+function processTick(t){
+let price=String(t.quote);
+let decimals=price.split(".")[1]||"";
+let digit=Number(decimals.slice(-1)||"0");
+history.push(digit);
+if(history.length>100)history.shift();
+counts[digit]++;
+document.getElementById("last").textContent=digit;
+document.getElementById("price").textContent="Price: "+price;
+document.getElementById("history").textContent=history.slice(-30).reverse().join("  ");
+document.getElementById("digits").innerHTML=counts.map((n,i)=>'<span class="digit">'+i+': '+n+'</span>').join("");
+let total=history.length;
+let match=counts[digit]/total*100;
+let differ=100-match;
+document.getElementById("matches").textContent="Latest digit "+digit+" frequency: "+match.toFixed(1)+"%";
+document.getElementById("differs").textContent="Other digits frequency: "+differ.toFixed(1)+"%";
+document.getElementById("signal").textContent=total<20?"Signal: collecting 20 ticks":"Signal: statistics only — no guaranteed prediction";
+}
+function disconnect(){if(ws)ws.close();ws=null;}
+</script>
+</body>
+</html>
+     
