@@ -1,1 +1,175 @@
-index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vincent Deriv Analyzer</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#08111f;color:white;
+ font-family:Arial,sans-serif;padding:18px;
+}
+.container{max-width:500px;margin:auto}
+h1{text-align:center;color:#00e5a0}
+.subtitle{text-align:center;color:#aab8ca}
+.card{
+ background:#142238;padding:18px;
+ border-radius:14px;margin:15px 0;
+ border:1px solid #263b56;
+}
+input{
+ width:100%;padding:15px;font-size:20px;
+ border-radius:9px;border:0;margin:10px 0;
+ text-align:center;
+}
+button{
+ padding:13px;border:0;border-radius:9px;
+ background:#00d99a;color:#071321;
+ font-weight:bold;width:100%;font-size:16px;
+}
+button.secondary{background:#344861;color:white;margin-top:10px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{background:#20334d;padding:15px;border-radius:10px;text-align:center}
+.number{font-size:30px;font-weight:bold;color:#00e5a0}
+.result{font-size:20px;font-weight:bold;text-align:center}
+.digits{display:flex;flex-wrap:wrap;gap:7px}
+.digit{
+ background:#263b56;padding:10px;
+ border-radius:7px;min-width:38px;text-align:center
+}
+.small{font-size:12px;color:#aab8ca;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>VINCENT DERIV ANALYZER</h1>
+<p class="subtitle">DIGITS • MATCHES • DIFFERS</p>
+
+<div class="card">
+<h3>Enter Latest Last Digit</h3>
+<input id="digit" type="number" min="0" max="9"
+placeholder="Enter digit 0 - 9">
+<button onclick="addDigit()">ADD DIGIT</button>
+<button class="secondary" onclick="clearData()">CLEAR HISTORY</button>
+</div>
+
+<div class="card">
+<h3>Analysis Results</h3>
+<div class="stats">
+<div class="stat">
+<div class="number" id="total">0</div>
+<div>Total Digits</div>
+</div>
+<div class="stat">
+<div class="number" id="even">0</div>
+<div>Even Digits</div>
+</div>
+<div class="stat">
+<div class="number" id="odd">0</div>
+<div>Odd Digits</div>
+</div>
+<div class="stat">
+<div class="number" id="different">0</div>
+<div>Unique Digits</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<h3>Matches Analysis</h3>
+<p class="result" id="matches">Waiting for data</p>
+<p class="small">Frequency of repeated digits in your entered history.</p>
+</div>
+
+<div class="card">
+<h3>Differs Analysis</h3>
+<p class="result" id="differs">Waiting for data</p>
+<p class="small">Frequency of digits different from the most recent digit.</p>
+</div>
+
+<div class="card">
+<h3>Digit History</h3>
+<div class="digits" id="history">No digits yet</div>
+</div>
+
+<div class="card">
+<h3>Digit Frequencies</h3>
+<div id="frequencies">No data yet</div>
+</div>
+
+<p class="small">
+IMPORTANT: This tool analyzes historical digits only.
+It does not guarantee future results or profits.
+Enter digits from your Deriv ticks manually.
+</p>
+</div>
+
+<script>
+let digits=[];
+
+function addDigit(){
+ const input=document.getElementById("digit");
+ const value=input.value.trim();
+
+ if(value==="" || !/^[0-9]$/.test(value)){
+  alert("Enter one digit between 0 and 9");
+  return;
+ }
+
+ digits.push(Number(value));
+ input.value="";
+ update();
+}
+
+function update(){
+ const total=digits.length;
+ const counts=Array(10).fill(0);
+
+ digits.forEach(d=>counts[d]++);
+
+ const even=digits.filter(d=>d%2===0).length;
+ const odd=total-even;
+ const unique=counts.filter(n=>n>0).length;
+
+ document.getElementById("total").textContent=total;
+ document.getElementById("even").textContent=even;
+ document.getElementById("odd").textContent=odd;
+ document.getElementById("different").textContent=unique;
+
+ if(total>0){
+  const latest=digits[total-1];
+  const matches=digits.filter(d=>d===latest).length;
+  const differs=total-matches;
+
+  document.getElementById("matches").textContent=
+   matches+" matches ("+(matches/total*100).toFixed(1)+"%)";
+
+  document.getElementById("differs").textContent=
+   differs+" differs ("+(differs/total*100).toFixed(1)+"%)";
+ }
+
+ document.getElementById("history").innerHTML=
+  digits.slice(-30).reverse().map(d=>
+   '<span class="digit">'+d+'</span>'
+  ).join("");
+
+ document.getElementById("frequencies").innerHTML=
+  counts.map((n,i)=>
+   '<p>Digit '+i+': '+n+' times ('+
+   (total?(n/total*100).toFixed(1):0)+'%)</p>'
+  ).join("");
+}
+
+function clearData(){
+ if(confirm("Clear all digit history?")){
+  digits=[];
+  document.getElementById("matches").textContent="Waiting for data";
+  document.getElementById("differs").textContent="Waiting for data";
+  update();
+ }
+}
+</script>
+</body>
+</html>
