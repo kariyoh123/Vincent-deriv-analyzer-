@@ -1,1 +1,128 @@
+b
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vincent Deriv Analyzer</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#101827;color:white;
+ font-family:Arial,sans-serif;padding:20px;
+}
+.container{max-width:600px;margin:auto}
+h1{text-align:center;color:#20d6a0}
+.card{
+ background:#1c293b;padding:18px;
+ border-radius:14px;margin:15px 0;
+}
+button,select{
+ padding:12px;border:0;border-radius:8px;
+ font-size:16px;margin:5px;
+}
+button{background:#20d6a0;color:#071a16;font-weight:bold}
+input{padding:12px;width:100%;border-radius:8px;border:0}
+.stat{font-size:25px;color:#20d6a0;font-weight:bold}
+.digits{display:flex;flex-wrap:wrap;gap:8px}
+.digit{
+ background:#304158;padding:12px;
+ border-radius:8px;min-width:42px;text-align:center
+}
+.small{color:#b6c4d5;font-size:13px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>VINCENT DERIV ANALYZER</h1>
+<p style="text-align:center">Matches & Differs Digit Analysis</p>
+
+<div class="card">
+<h3>Market Connection</h3>
+<select id="market">
+<option value="R_100">Volatility 100 Index</option>
+<option value="R_75">Volatility 75 Index</option>
+<option value="R_50">Volatility 50 Index</option>
+<option value="R_25">Volatility 25 Index</option>
+<option value="R_10">Volatility 10 Index</option>
+</select>
+<button onclick="connect()">Connect Live Market</button>
+<p id="status">Not connected</p>
+</div>
+
+<div class="card">
+<h3>Latest Price</h3>
+<div class="stat" id="price">--</div>
+<p>Last digit: <span class="stat" id="last">--</span></p>
+<p id="count">Ticks received: 0</p>
+</div>
+
+<div class="card">
+<h3>Digit Statistics</h3>
+<div class="digits" id="digits"></div>
+</div>
+
+<div class="card">
+<h3>Matches & Differs Analysis</h3>
+<p>Most frequent digit: <span class="stat" id="hot">--</span></p>
+<p>Least frequent digit: <span class="stat" id="cold">--</span></p>
+<p>Suggested digit to study: <span class="stat" id="suggestion">--</span></p>
+<p class="small">Statistics describe past ticks only. They do not predict the next tick.</p>
+</div>
+
+<div class="card">
+<h3>Recent Last Digits</h3>
+<div class="digits" id="history"></div>
+</div>
+</div>
+
+<script>
+let ws=null,counts=Array(10).fill(0),history=[];
+let total=0;
+
+function connect(){
+ if(ws) ws.close();
+ const market=document.getElementById('market').value;
+ document.getElementById('status').textContent='Connecting...';
+ ws=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+ ws.onopen=()=>{
+  document.getElementById('status').textContent='Connected';
+  ws.send(JSON.stringify({ticks:market,subscribe:1}));
+ };
+ ws.onmessage=(event)=>{
+  const data=JSON.parse(event.data);
+  if(data.tick){
+   const quote=data.tick.quote.toString();
+   const digit=Number(quote.slice(-1));
+   total++;
+   counts[digit]++;
+   history.unshift(digit);
+   history=history.slice(0,30);
+   document.getElementById('price').textContent=quote;
+   document.getElementById('last').textContent=digit;
+   document.getElementById('count').textContent='Ticks received: '+total;
+   render();
+  }
+  if(data.error)document.getElementById('status').textContent=data.error.message;
+ };
+ ws.onerror=()=>document.getElementById('status').textContent='Connection error';
+ ws.onclose=()=>document.getElementById('status').textContent='Disconnected';
+}
+
+function render(){
+ const box=document.getElementById('digits');
+ box.innerHTML='';
+ counts.forEach((n,i)=>{
+  box.innerHTML+=`<div class="digit">${i}<br>${n}<br><small>${total?(n/total*100).toFixed(1):0}%</small></div>`;
+ });
+ const max=Math.max(...counts),min=Math.min(...counts);
+ document.getElementById('hot').textContent=counts.indexOf(max);
+ document.getElementById('cold').textContent=counts.indexOf(min);
+ document.getElementById('suggestion').textContent=counts.indexOf(min);
+ document.getElementById('history').innerHTML=history.map(d=>`<div class="digit">${d}</div>`).join('');
+}
+render();
+</script>
+</body>
+</html>
 
