@@ -7,169 +7,213 @@
 <title>Vincent Deriv Analyzer</title>
 <style>
 *{box-sizing:border-box}
-body{
- margin:0;background:#08111f;color:white;
- font-family:Arial,sans-serif;padding:18px;
-}
-.container{max-width:500px;margin:auto}
-h1{text-align:center;color:#00e5a0}
-.subtitle{text-align:center;color:#aab8ca}
-.card{
- background:#142238;padding:18px;
- border-radius:14px;margin:15px 0;
- border:1px solid #263b56;
-}
-input{
- width:100%;padding:15px;font-size:20px;
- border-radius:9px;border:0;margin:10px 0;
- text-align:center;
-}
-button{
- padding:13px;border:0;border-radius:9px;
- background:#00d99a;color:#071321;
- font-weight:bold;width:100%;font-size:16px;
-}
-button.secondary{background:#344861;color:white;margin-top:10px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.stat{background:#20334d;padding:15px;border-radius:10px;text-align:center}
-.number{font-size:30px;font-weight:bold;color:#00e5a0}
-.result{font-size:20px;font-weight:bold;text-align:center}
-.digits{display:flex;flex-wrap:wrap;gap:7px}
-.digit{
- background:#263b56;padding:10px;
- border-radius:7px;min-width:38px;text-align:center
-}
-.small{font-size:12px;color:#aab8ca;line-height:1.5}
+body{margin:0;background:#101827;color:#fff;font-family:Arial,sans-serif;padding:16px}
+.container{max-width:650px;margin:auto}
+h1{text-align:center;color:#39d98a}
+.card{background:#1c293b;padding:16px;border-radius:12px;margin:12px 0}
+label{display:block;margin:10px 0 6px}
+input,select,button{width:100%;padding:12px;border-radius:8px;border:0;margin:5px 0;font-size:16px}
+input,select{background:#eef3fa;color:#111}
+button{background:#16a36a;color:white;font-weight:bold}
+button.stop{background:#d94848}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:#26374d;padding:14px;border-radius:9px;text-align:center}
+.stat strong{display:block;font-size:25px;color:#39d98a;margin-top:6px}
+#status{color:#ffd166}
+#digits{display:flex;flex-wrap:wrap;gap:7px}
+.digit{background:#34465d;padding:9px 12px;border-radius:7px}
+.bar{height:9px;background:#34465d;border-radius:8px;overflow:hidden}
+.fill{height:100%;background:#39d98a}
+.small{font-size:13px;color:#bac7d8;line-height:1.5}
 </style>
 </head>
 <body>
 <div class="container">
 <h1>VINCENT DERIV ANALYZER</h1>
-<p class="subtitle">DIGITS • MATCHES • DIFFERS</p>
+<p style="text-align:center">Live Digit Matches & Differs Analyzer</p>
 
 <div class="card">
-<h3>Enter Latest Last Digit</h3>
-<input id="digit" type="number" min="0" max="9"
-placeholder="Enter digit 0 - 9">
-<button onclick="addDigit()">ADD DIGIT</button>
-<button class="secondary" onclick="clearData()">CLEAR HISTORY</button>
+<label>Deriv App ID</label>
+<input id="appid" type="number" value="1089">
+<p class="small">1089 is for testing. Replace it with your own registered Deriv App ID for your published app.</p>
+
+<label>Select Market</label>
+<select id="market">
+<option value="R_10">Volatility 10 Index</option>
+<option value="R_25">Volatility 25 Index</option>
+<option value="R_50">Volatility 50 Index</option>
+<option value="R_75">Volatility 75 Index</option>
+<option value="R_100">Volatility 100 Index</option>
+<option value="1HZ10V">Volatility 10 (1s) Index</option>
+<option value="1HZ25V">Volatility 25 (1s) Index</option>
+<option value="1HZ50V">Volatility 50 (1s) Index</option>
+<option value="1HZ75V">Volatility 75 (1s) Index</option>
+<option value="1HZ100V">Volatility 100 (1s) Index</option>
+</select>
+
+<button id="connect">CONNECT LIVE</button>
+<button id="disconnect" class="stop">DISCONNECT</button>
+<p id="status">Status: Disconnected</p>
 </div>
 
 <div class="card">
-<h3>Analysis Results</h3>
+<h3>Live Market Price</h3>
+<div id="price" style="font-size:27px;color:#39d98a">Waiting...</div>
 <div class="stats">
-<div class="stat">
-<div class="number" id="total">0</div>
-<div>Total Digits</div>
-</div>
-<div class="stat">
-<div class="number" id="even">0</div>
-<div>Even Digits</div>
-</div>
-<div class="stat">
-<div class="number" id="odd">0</div>
-<div>Odd Digits</div>
-</div>
-<div class="stat">
-<div class="number" id="different">0</div>
-<div>Unique Digits</div>
-</div>
+<div class="stat">Latest Digit<strong id="latest">-</strong></div>
+<div class="stat">Total Ticks<strong id="total">0</strong></div>
+<div class="stat">Matches Latest<strong id="matches">0</strong></div>
+<div class="stat">Differs Latest<strong id="differs">0</strong></div>
+<div class="stat">Unique Digits<strong id="unique">0</strong></div>
+<div class="stat">Most Frequent<strong id="frequent">-</strong></div>
 </div>
 </div>
 
 <div class="card">
-<h3>Matches Analysis</h3>
-<p class="result" id="matches">Waiting for data</p>
-<p class="small">Frequency of repeated digits in your entered history.</p>
+<h3>Digit Frequency</h3>
+<div id="frequency"></div>
 </div>
 
 <div class="card">
-<h3>Differs Analysis</h3>
-<p class="result" id="differs">Waiting for data</p>
-<p class="small">Frequency of digits different from the most recent digit.</p>
+<h3>Recent Digits</h3>
+<div id="digits"></div>
+<button id="clear">CLEAR HISTORY</button>
 </div>
 
 <div class="card">
-<h3>Digit History</h3>
-<div class="digits" id="history">No digits yet</div>
+<h3>Important Notice</h3>
+<p class="small">This tool analyzes live market tick digits and historical frequencies. Frequency does not guarantee the next digit. Matches and Differs results are statistical observations, not guaranteed predictions. This analyzer does not place trades.</p>
 </div>
-
-<div class="card">
-<h3>Digit Frequencies</h3>
-<div id="frequencies">No data yet</div>
-</div>
-
-<p class="small">
-IMPORTANT: This tool analyzes historical digits only.
-It does not guarantee future results or profits.
-Enter digits from your Deriv ticks manually.
-</p>
 </div>
 
 <script>
-let digits=[];
+let socket=null;
+let history=[];
+let pipSize=null;
+let connected=false;
 
-function addDigit(){
- const input=document.getElementById("digit");
- const value=input.value.trim();
+const $=id=>document.getElementById(id);
 
- if(value==="" || !/^[0-9]$/.test(value)){
-  alert("Enter one digit between 0 and 9");
-  return;
- }
-
- digits.push(Number(value));
- input.value="";
- update();
+function setStatus(message){
+  $("status").textContent="Status: "+message;
 }
 
-function update(){
- const total=digits.length;
- const counts=Array(10).fill(0);
-
- digits.forEach(d=>counts[d]++);
-
- const even=digits.filter(d=>d%2===0).length;
- const odd=total-even;
- const unique=counts.filter(n=>n>0).length;
-
- document.getElementById("total").textContent=total;
- document.getElementById("even").textContent=even;
- document.getElementById("odd").textContent=odd;
- document.getElementById("different").textContent=unique;
-
- if(total>0){
-  const latest=digits[total-1];
-  const matches=digits.filter(d=>d===latest).length;
-  const differs=total-matches;
-
-  document.getElementById("matches").textContent=
-   matches+" matches ("+(matches/total*100).toFixed(1)+"%)";
-
-  document.getElementById("differs").textContent=
-   differs+" differs ("+(differs/total*100).toFixed(1)+"%)";
- }
-
- document.getElementById("history").innerHTML=
-  digits.slice(-30).reverse().map(d=>
-   '<span class="digit">'+d+'</span>'
-  ).join("");
-
- document.getElementById("frequencies").innerHTML=
-  counts.map((n,i)=>
-   '<p>Digit '+i+': '+n+' times ('+
-   (total?(n/total*100).toFixed(1):0)+'%)</p>'
-  ).join("");
+function getLastDigit(quote,pip){
+  const decimals=Number(pip);
+  const fixed=Number(quote).toFixed(decimals);
+  const digits=fixed.replace(/\D/g,"");
+  return Number(digits.slice(-1));
 }
 
-function clearData(){
- if(confirm("Clear all digit history?")){
-  digits=[];
-  document.getElementById("matches").textContent="Waiting for data";
-  document.getElementById("differs").textContent="Waiting for data";
-  update();
- }
+function render(){
+  const total=history.length;
+  const counts=Array(10).fill(0);
+  history.forEach(d=>counts[d]++);
+
+  $("total").textContent=total;
+  $("latest").textContent=total?history[total-1]:"-";
+  $("unique").textContent=counts.filter(x=>x>0).length;
+
+  if(total){
+    const last=history[total-1];
+    $("matches").textContent=counts[last];
+    $("differs").textContent=total-counts[last];
+    const max=Math.max(...counts);
+    $("frequent").textContent=counts.indexOf(max)+" ("+max+")";
+  }else{
+    $("matches").textContent=0;
+    $("differs").textContent=0;
+    $("frequent").textContent="-";
+  }
+
+  $("frequency").innerHTML=counts.map((count,d)=>{
+    const percent=total?count/total*100:0;
+    return `<p>${d}: ${count} (${percent.toFixed(1)}%)</p>
+    <div class="bar"><div class="fill" style="width:${percent}%"></div></div>`;
+  }).join("");
+
+  $("digits").innerHTML=history.slice(-30).reverse()
+    .map(d=>`<span class="digit">${d}</span>`).join("");
 }
+
+function disconnect(){
+  connected=false;
+  if(socket){
+    socket.onclose=null;
+    socket.close();
+    socket=null;
+  }
+  setStatus("Disconnected");
+}
+
+function connect(){
+  disconnect();
+  const appid=$("appid").value.trim();
+  const market=$("market").value;
+
+  if(!appid){
+    setStatus("Enter an App ID");
+    return;
+  }
+
+  setStatus("Connecting...");
+
+  try{
+    socket=new WebSocket(
+      "wss://ws.derivws.com/websockets/v3?app_id="+encodeURIComponent(appid)
+    );
+
+    socket.onopen=()=>{
+      connected=true;
+      setStatus("Connected - receiving live ticks");
+      socket.send(JSON.stringify({
+        ticks:market,
+        subscribe:1
+      }));
+    };
+
+    socket.onmessage=event=>{
+      const data=JSON.parse(event.data);
+
+      if(data.error){
+        setStatus("Error: "+data.error.message);
+        return;
+      }
+
+      if(data.msg_type==="tick" && data.tick){
+        const tick=data.tick;
+        pipSize=tick.pip_size;
+        const digit=getLastDigit(tick.quote,pipSize);
+
+        $("price").textContent=Number(tick.quote).toFixed(pipSize);
+        history.push(digit);
+
+        if(history.length>500) history.shift();
+        render();
+      }
+    };
+
+    socket.onerror=()=>{
+      setStatus("Connection error. Check App ID and internet.");
+    };
+
+    socket.onclose=()=>{
+      connected=false;
+      setStatus("Connection closed");
+    };
+  }catch(error){
+    setStatus("Could not connect: "+error.message);
+  }
+}
+
+$("connect").addEventListener("click",connect);
+$("disconnect").addEventListener("click",disconnect);
+$("clear").addEventListener("click",()=>{
+  history=[];
+  render();
+});
+
+render();
 </script>
 </body>
 </html>
