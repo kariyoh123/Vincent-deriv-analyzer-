@@ -87,7 +87,9 @@ function connect(){
 disconnect();
 currentSymbol=document.getElementById("symbol").value;
 document.getElementById("status").textContent="Connecting...";
-socket=new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=34YyTUEi9qFtzv0jt0SBt
+
+socket=new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=34YyTUEi9qFtzv0jt0SBt");
+
 
 socket.onopen=()=>{
 document.getElementById("status").textContent="Connected - Waiting for ticks";
