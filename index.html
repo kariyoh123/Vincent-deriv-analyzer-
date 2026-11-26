@@ -164,7 +164,13 @@ ticks.length<20?
 
 document.getElementById("history").textContent=
 ticks.slice(-30).reverse().join(" | ");
-}
+
+const counts=Array.from({length:10},(_,d)=>ticks.filter(x=>x===d).length);
+const maxCount=Math.max(0,...counts);
+const bestDigits=counts.map((c,d)=>c===maxCount?d:null).filter(d=>d!==null);
+const bestText=ticks.length===0?"No data yet":bestDigits.join(", ")+" ("+maxCount+" appearances)";
+document.getElementById("analysis").textContent+=" | Most frequent digit: "+bestText;}
+
 
 function clearHistory(){
 ticks=[];
