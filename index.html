@@ -5,44 +5,74 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vincent Deriv Analyzer</title>
 <style>
-:root{color-scheme:dark;--bg:#090b18;--panel:#14172b;--panel2:#1b2040;--purple:#8b5cf6;--green:#22c55e;--muted:#a7aecb;--line:#303657}
+:root{color-scheme:dark;--bg:#142e70;--panel:rgba(255,255,255,.10);--panel2:rgba(255,255,255,.14);--cyan:#83d8ff;--muted:#d2ddf4;--line:rgba(255,255,255,.18);--green:#22c55e}
 *{box-sizing:border-box}
-body{margin:0;padding:18px;background:linear-gradient(160deg,#0b1025,#090b18 55%);font-family:Arial,sans-serif;color:#f5f6ff}
-.wrap{max-width:760px;margin:auto}
-h1{text-align:center;font-size:25px;margin:8px 0 5px}
-.sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:18px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:13px 0;box-shadow:0 8px 25px #0004}
+body{margin:0;padding:0;background:linear-gradient(145deg,#243d91 0%,#254f91 52%,#17618b 100%);font-family:Arial,sans-serif;color:#f8fbff;min-height:100vh}
+.wrap{max-width:780px;margin:0 auto;padding:22px 18px 42px}
+.hero{text-align:center;padding:18px 4px 24px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:1px solid #ffffff38;background:#ffffff18;border-radius:30px;color:#d9efff;font-size:13px;font-weight:700}
+h1{text-align:center;font-size:clamp(32px,7vw,54px);line-height:1.12;letter-spacing:-1.5px;margin:30px auto 18px;max-width:680px}
+h1 span{color:var(--cyan)}
+.sub{text-align:center;color:#d9e5ff;font-size:16px;line-height:1.65;max-width:640px;margin:0 auto 24px}
+.hero-actions{max-width:540px;margin:26px auto 0}
+.open-deriv{display:block;text-align:center;text-decoration:none;background:#ff4354;color:white;font-weight:800;font-size:18px;padding:19px 16px;border-radius:16px;box-shadow:0 12px 30px #ed334b40}
+.statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:24px 0}
+.stat{background:#ffffff18;border:1px solid #ffffff28;border-radius:20px;padding:20px 12px;text-align:center;backdrop-filter:blur(8px)}
+.stat strong{display:block;color:var(--cyan);font-size:30px;margin-bottom:7px}
+.stat span{font-size:13px;color:#e1eaff;font-weight:700}
+.market-chips{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin:18px 0 28px}
+.chip{border:1px solid #ffffff42;background:#ffffff18;color:#f3f7ff;padding:9px 15px;border-radius:30px;font-size:13px;font-weight:700}
+.section-title{font-size:20px;margin:0 0 6px}
+.section-sub{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 14px}
+.panel{background:rgba(14,30,75,.36);border:1px solid var(--line);border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 12px 28px #07163b20;backdrop-filter:blur(10px)}
 .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-label{display:block;color:var(--muted);font-size:12px;margin-bottom:7px}
-select,button{font:inherit;border-radius:11px;padding:12px;border:1px solid var(--line);background:var(--panel2);color:#fff}
+label{display:block;color:#dce8ff;font-size:12px;font-weight:700;margin-bottom:8px;letter-spacing:.5px}
+select,button{font:inherit;border-radius:12px;padding:13px;border:1px solid #ffffff35;background:#263f83;color:#fff}
 select{width:100%;font-size:15px}
 button{cursor:pointer;font-weight:bold}
-.primary{width:100%;background:linear-gradient(90deg,#713de0,#9b5cf6);border:0;margin-top:12px}
-.digitbox{text-align:center;padding:18px 8px}
-.kicker{color:#b8a0ff;font-size:12px;font-weight:bold;letter-spacing:1.5px}
-.digit{font-size:86px;line-height:1.05;font-weight:800;margin:8px 0;color:#fff}
-.signal{display:inline-block;padding:8px 13px;border-radius:30px;background:#123b2a;color:#72f0a2;font-size:12px;font-weight:bold}
-.note{color:var(--muted);font-size:12px;line-height:1.5;margin-top:12px}
-.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
-.stat{background:#0e1225;border-radius:12px;padding:12px;text-align:center}
-.stat strong{display:block;font-size:20px;margin-bottom:4px}
-.stat span{font-size:11px;color:var(--muted)}
-.bars{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;align-items:end;margin-top:14px}
-.baritem{text-align:center;font-size:11px;color:var(--muted)}
-.track{height:72px;background:#0b1020;border-radius:7px;display:flex;align-items:end;overflow:hidden;margin-bottom:5px}
-.fill{width:100%;background:linear-gradient(#a78bfa,#6d42cf);border-radius:7px 7px 0 0;min-height:2px}
-.status{font-size:13px;color:var(--muted)}
+.primary{width:100%;background:#ff4354;border:0;margin-top:13px;padding:16px;font-size:16px}
+.digitbox{text-align:center;padding:24px 12px}
+.kicker{color:var(--cyan);font-size:12px;font-weight:bold;letter-spacing:1.5px}
+.digit{font-size:clamp(76px,17vw,104px);line-height:1.05;font-weight:800;margin:10px 0;color:#fff}
+.signal{display:inline-block;padding:9px 15px;border-radius:30px;background:#123b2a;color:#72f0a2;font-size:12px;font-weight:bold}
+.note{color:#d0def7;font-size:12px;line-height:1.6;margin-top:12px}
+.statgrid .stat{min-width:0}
+.bars{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;align-items:end;margin-top:16px}
+.baritem{text-align:center;font-size:11px;color:#e1eaff}
+.track{height:72px;background:#142b62aa;border-radius:7px;display:flex;align-items:end;overflow:hidden;margin-bottom:5px}
+.fill{width:100%;background:linear-gradient(#8ee0ff,#478ce5);border-radius:7px 7px 0 0;min-height:2px}
+.status{font-size:13px;color:#d7e4ff}
 .status b{color:#fff}
-.smallbtn{font-size:12px;padding:8px 10px}
-@media(max-width:430px){body{padding:12px}.panel{padding:13px}.digit{font-size:74px}.statgrid{grid-template-columns:repeat(3,1fr)}}
+.smallbtn{font-size:12px;padding:9px 12px;background:#ffffff20}
+.feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
+.feature{padding:18px;border-radius:18px;background:#ffffff16;border:1px solid #ffffff25}
+.feature-icon{width:42px;height:42px;border-radius:12px;background:#64b9ed35;display:grid;place-items:center;font-size:21px;margin-bottom:12px}
+.feature b{display:block;margin-bottom:7px}
+.feature p{margin:0;color:#d7e4ff;font-size:13px;line-height:1.5}
+.footer-note{text-align:center;color:#d2ddf4;font-size:12px;line-height:1.6;padding:10px 8px}
+@media(max-width:430px){.wrap{padding:16px 14px 34px}.hero{padding-top:12px}h1{margin-top:25px}.panel{padding:15px}.feature-grid{grid-template-columns:1fr}.bars{gap:4px}.baritem{font-size:10px}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>VINCENT DERIV ANALYZER</h1>
-  <div class="sub">Live last-digit frequency scanner</div>
+  <header class="hero">
+    <div class="eyebrow">✧ &nbsp; AUTOMATED DIGIT ANALYSIS FOR DERIV</div>
+    <h1>Live statistical insights for <span>Volatility Indices</span></h1>
+    <p class="sub">Vincent Deriv Analyzer monitors live market ticks and displays digit-frequency statistics to help you study recent market activity.</p>
+    <div class="hero-actions"><a class="open-deriv" href="https://deriv.com/" target="_blank" rel="noopener">↗ &nbsp; Open Deriv</a></div>
+  </header>
+
+  <div class="statgrid">
+    <div class="stat"><strong>5</strong><span>VOLATILITY MARKETS</span></div>
+    <div class="stat"><strong>10</strong><span>DIGITS TRACKED</span></div>
+    <div class="stat"><strong>LIVE</strong><span>TICK MONITORING</span></div>
+    <div class="stat"><strong>100</strong><span>RECENT TICKS PER MARKET</span></div>
+  </div>
+  <div class="market-chips"><span class="chip">V10</span><span class="chip">V25</span><span class="chip">V50</span><span class="chip">V75</span><span class="chip">V100</span></div>
 
   <section class="panel">
+    <h2 class="section-title">Live Market Scanner</h2>
+    <p class="section-sub">Choose one market or scan all five volatility indices together.</p>
     <label for="market">SELECT VOLATILITY INDEX</label>
     <select id="market">
       <option value="R_10">Volatility 10 Index</option>
@@ -55,18 +85,18 @@ button{cursor:pointer;font-weight:bold}
       <span class="status" id="connection">● Disconnected</span>
       <span class="status" id="marketStatus">Waiting to scan</span>
     </div>
-    <button class="primary" id="scanBtn">START SCANNING</button>
+    <button class="primary" id="scanBtn">START LIVE SCANNING</button>
   </section>
 
   <section class="panel digitbox">
-    <div class="kicker">TOP HISTORICAL MATCH</div>
+    <div class="kicker">TOP HISTORICAL DIGIT</div>
     <div class="digit" id="topDigit">—</div>
     <div class="signal" id="signal">COLLECTING DATA</div>
     <div class="note" id="explain">The scanner needs at least 30 live ticks before showing the most frequent digit.</div>
   </section>
 
   <section class="panel">
-    <div class="row"><b>LIVE ANALYSIS</b><span class="status" id="tickCount">0 ticks scanned</span></div>
+    <div class="row"><b>LIVE DIGIT ANALYSIS</b><span class="status" id="tickCount">0 ticks scanned</span></div>
     <div class="statgrid">
       <div class="stat"><strong id="lastDigit">—</strong><span>LAST DIGIT</span></div>
       <div class="stat"><strong id="topCount">—</strong><span>TOP DIGIT COUNT</span></div>
@@ -76,12 +106,20 @@ button{cursor:pointer;font-weight:bold}
   </section>
 
   <section class="panel">
-    <div class="row"><b>FIVE-MARKET SCAN</b><button class="smallbtn" id="allBtn">Scan all 5</button></div>
+    <div class="row"><b>FIVE-MARKET SCAN</b><button class="smallbtn" id="allBtn">SCAN ALL 5</button></div>
     <div id="marketResults" class="note">Start scanning to collect live data from the selected market, or choose “Scan all 5”.</div>
   </section>
 
-  <div class="note">Important: This tool reports which digit has appeared most often in the recent sample. It does not know or guarantee the next digit, and it is not a verified trading signal. Check results carefully before making any trade.</div>
+  <h2 class="section-title" style="text-align:center;margin-top:28px">Analyzer Features</h2>
+  <div class="feature-grid">
+    <div class="feature"><div class="feature-icon">◎</div><b>Automated Scanning</b><p>Continuously analyzes digit patterns while the scanner is running.</p></div>
+    <div class="feature"><div class="feature-icon">⌖</div><b>Live Statistics</b><p>See digit frequency, recent counts and the latest tick.</p></div>
+    <div class="feature"><div class="feature-icon">◷</div><b>Five Markets</b><p>Monitor Volatility 10, 25, 50, 75 and 100 indices.</p></div>
+    <div class="feature"><div class="feature-icon">✧</div><b>Historical Analysis</b><p>Compare observed frequencies without claiming certainty about the next digit.</p></div>
+  </div>
+  <div class="footer-note">Important: The top digit is the most frequent digit in the recent sample, not a guaranteed next-digit prediction or verified trading signal. Past frequency does not guarantee future results.</div>
 </div>
+
 <script>
 (() => {
   const WS_URL = "wss://api.derivws.com/trading/v1/options/ws/public";
@@ -94,7 +132,7 @@ button{cursor:pointer;font-weight:bold}
   const selected = () => $("market").value;
 
   function setConnection(text, good=false) {
-    $("connection").textContent = (good ? "● " : "● ") + text;
+    $("connection").textContent = "● " + text;
     $("connection").style.color = good ? "#72f0a2" : "#ffb4b4";
   }
   function digitFromQuote(quote, pip) {
@@ -139,7 +177,7 @@ button{cursor:pointer;font-weight:bold}
     $("marketResults").innerHTML = symbols.map(s => {
       const st=stats(s);
       const result=st.total>=30 ? `Top digit: <b>${st.best}</b> · ${st.rate.toFixed(1)}% · ${st.total} ticks` : `Collecting data · ${st.total}/30 ticks`;
-      return `<div style="padding:8px 0;border-bottom:1px solid #303657"><b>${names[s]}</b><br>${result}</div>`;
+      return `<div style="padding:8px 0;border-bottom:1px solid #ffffff35"><b>${names[s]}</b><br>${result}</div>`;
     }).join("");
   }
   function subscribe() {
