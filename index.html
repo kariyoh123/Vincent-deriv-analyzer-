@@ -1,164 +1,208 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vincent Deriv Analyzer</title>
 <style>
-body{background:#101827;color:white;font-family:Arial;padding:15px}
-h1{text-align:center;color:#35d5a0}
-h2{color:#35d5a0}
-.status,.market{background:#1d2b40;padding:14px;margin:12px 0;border-radius:10px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.stat{background:#293b54;padding:10px;border-radius:8px}
-.big{font-size:25px;color:#35d5a0;font-weight:bold}
-.digits{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.digit{background:#293b54;text-align:center;padding:8px 2px;border-radius:7px}
-.bar{height:5px;background:#35d5a0;margin-top:5px}
-button{background:#35d5a0;padding:12px;border:0;border-radius:8px;font-weight:bold}
-.note{font-size:12px;color:#bdc9d8;line-height:1.5}
+:root{color-scheme:dark;--bg:#090b18;--panel:#14172b;--panel2:#1b2040;--purple:#8b5cf6;--green:#22c55e;--muted:#a7aecb;--line:#303657}
+*{box-sizing:border-box}
+body{margin:0;padding:18px;background:linear-gradient(160deg,#0b1025,#090b18 55%);font-family:Arial,sans-serif;color:#f5f6ff}
+.wrap{max-width:760px;margin:auto}
+h1{text-align:center;font-size:25px;margin:8px 0 5px}
+.sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:18px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:13px 0;box-shadow:0 8px 25px #0004}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+label{display:block;color:var(--muted);font-size:12px;margin-bottom:7px}
+select,button{font:inherit;border-radius:11px;padding:12px;border:1px solid var(--line);background:var(--panel2);color:#fff}
+select{width:100%;font-size:15px}
+button{cursor:pointer;font-weight:bold}
+.primary{width:100%;background:linear-gradient(90deg,#713de0,#9b5cf6);border:0;margin-top:12px}
+.digitbox{text-align:center;padding:18px 8px}
+.kicker{color:#b8a0ff;font-size:12px;font-weight:bold;letter-spacing:1.5px}
+.digit{font-size:86px;line-height:1.05;font-weight:800;margin:8px 0;color:#fff}
+.signal{display:inline-block;padding:8px 13px;border-radius:30px;background:#123b2a;color:#72f0a2;font-size:12px;font-weight:bold}
+.note{color:var(--muted);font-size:12px;line-height:1.5;margin-top:12px}
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.stat{background:#0e1225;border-radius:12px;padding:12px;text-align:center}
+.stat strong{display:block;font-size:20px;margin-bottom:4px}
+.stat span{font-size:11px;color:var(--muted)}
+.bars{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;align-items:end;margin-top:14px}
+.baritem{text-align:center;font-size:11px;color:var(--muted)}
+.track{height:72px;background:#0b1020;border-radius:7px;display:flex;align-items:end;overflow:hidden;margin-bottom:5px}
+.fill{width:100%;background:linear-gradient(#a78bfa,#6d42cf);border-radius:7px 7px 0 0;min-height:2px}
+.status{font-size:13px;color:var(--muted)}
+.status b{color:#fff}
+.smallbtn{font-size:12px;padding:8px 10px}
+@media(max-width:430px){body{padding:12px}.panel{padding:13px}.digit{font-size:74px}.statgrid{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
-<h1>Vincent Deriv Analyzer</h1>
-<div class="status" id="status">Connecting...</div>
-<button onclick="reconnect()">Reconnect</button>
-<div id="markets"></div>
-<p class="note">The leading digit is based on the last 100 ticks. Historical frequency does not guarantee the next digit. This is an analysis tool, not a guaranteed trading signal.</p>
+<div class="wrap">
+  <h1>VINCENT DERIV ANALYZER</h1>
+  <div class="sub">Live last-digit frequency scanner</div>
 
-<script>
-const SYMBOLS=[
-{symbol:"R_10",name:"Volatility 10"},
-{symbol:"R_25",name:"Volatility 25"},
-{symbol:"R_50",name:"Volatility 50"},
-{symbol:"R_75",name:"Volatility 75"},
-{symbol:"R_100",name:"Volatility 100"}
-];
+  <section class="panel">
+    <label for="market">SELECT VOLATILITY INDEX</label>
+    <select id="market">
+      <option value="R_10">Volatility 10 Index</option>
+      <option value="R_25">Volatility 25 Index</option>
+      <option value="R_50">Volatility 50 Index</option>
+      <option value="R_75">Volatility 75 Index</option>
+      <option value="R_100">Volatility 100 Index</option>
+    </select>
+    <div class="row" style="margin-top:12px">
+      <span class="status" id="connection">● Disconnected</span>
+      <span class="status" id="marketStatus">Waiting to scan</span>
+    </div>
+    <button class="primary" id="scanBtn">START SCANNING</button>
+  </section>
 
-let socket;
-let data={};
+  <section class="panel digitbox">
+    <div class="kicker">TOP HISTORICAL MATCH</div>
+    <div class="digit" id="topDigit">—</div>
+    <div class="signal" id="signal">COLLECTING DATA</div>
+    <div class="note" id="explain">The scanner needs at least 30 live ticks before showing the most frequent digit.</div>
+  </section>
 
-SYMBOLS.forEach(m=>{
-data[m.symbol]={digits:[],price:"--",last:"--",counts:Array(10).fill(0)};
-});
+  <section class="panel">
+    <div class="row"><b>LIVE ANALYSIS</b><span class="status" id="tickCount">0 ticks scanned</span></div>
+    <div class="statgrid">
+      <div class="stat"><strong id="lastDigit">—</strong><span>LAST DIGIT</span></div>
+      <div class="stat"><strong id="topCount">—</strong><span>TOP DIGIT COUNT</span></div>
+      <div class="stat"><strong id="topRate">—</strong><span>TOP DIGIT %</span></div>
+    </div>
+    <div class="bars" id="bars"></div>
+  </section>
 
-function setup(){
-const container=document.getElementById("markets");
-SYMBOLS.forEach(m=>{
-container.innerHTML+=`
-<div class="market">
-<h2>${m.name}</h2>
-<div class="stats">
-<div class="stat">Latest price<br><b id="price_${m.symbol}">--</b></div>
-<div class="stat">Latest digit<br><span class="big" id="last_${m.symbol}">--</span></div>
-<div class="stat">Ticks scanned<br><b id="ticks_${m.symbol}">0</b></div>
-<div class="stat">Most frequent digit<br><span class="big" id="top_${m.symbol}">--</span></div>
+  <section class="panel">
+    <div class="row"><b>FIVE-MARKET SCAN</b><button class="smallbtn" id="allBtn">Scan all 5</button></div>
+    <div id="marketResults" class="note">Start scanning to collect live data from the selected market, or choose “Scan all 5”.</div>
+  </section>
+
+  <div class="note">Important: This tool reports which digit has appeared most often in the recent sample. It does not know or guarantee the next digit, and it is not a verified trading signal. Check results carefully before making any trade.</div>
 </div>
-<h3>Digit frequency (0–9)</h3>
-<div class="digits" id="digits_${m.symbol}"></div>
-</div>`;
-});
-}
+<script>
+(() => {
+  const WS_URL = "wss://api.derivws.com/trading/v1/options/ws/public";
+  const symbols = ["R_10","R_25","R_50","R_75","R_100"];
+  const names = {R_10:"Volatility 10",R_25:"Volatility 25",R_50:"Volatility 50",R_75:"Volatility 75",R_100:"Volatility 100"};
+  const histories = Object.fromEntries(symbols.map(s => [s, []]));
+  const pipSizes = {};
+  let ws = null, running = false, scanAll = false, reconnectTimer = null;
+  const $ = id => document.getElementById(id);
+  const selected = () => $("market").value;
 
-function reconnect(){
-if(socket){
-socket.onclose=null;
-socket.close();
-}
-connect();
-}
-
-function connect(){
-document.getElementById("status").textContent="Connecting...";
-socket=new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
-
-socket.onopen=()=>{
-document.getElementById("status").textContent="Connected — scanning five indices";
-SYMBOLS.forEach(m=>{
-socket.send(JSON.stringify({
-ticks:m.symbol,
-subscribe:1
-}));
-});
-};
-
-socket.onmessage=(event)=>{
-const msg=JSON.parse(event.data);
-if(msg.error){
-document.getElementById("status").textContent="Error: "+msg.error.message;
-return;
-}
-if(msg.msg_type==="tick"&&msg.tick){
-processTick(msg.tick);
-}
-};
-
-socket.onerror=()=>{
-document.getElementById("status").textContent="Connection error. Tap Reconnect.";
-};
-
-socket.onclose=()=>{
-document.getElementById("status").textContent="Disconnected. Tap Reconnect.";
-};
-}
-
-function processTick(tick){
-const symbol=tick.symbol;
-if(!data[symbol])return;
-
-const item=data[symbol];
-const price=Number(tick.quote);
-if(!Number.isFinite(price))return;
-
-const decimals=Number(tick.pip_size);
-const formatted=price.toFixed(Number.isFinite(decimals)?decimals:2);
-const digit=Number(formatted.replace(/\D/g,"").slice(-1));
-
-item.price=formatted;
-item.last=digit;
-item.digits.push(digit);
-
-;
-
-item.counts=Array(10).fill(0);
-item.digits.forEach(d=>item.counts[d]++);
-
-updateMarket(symbol);
-}
-
-function updateMarket(symbol){
-const item=data[symbol];
-const total=item.digits.length;
-const max=Math.max(...item.counts);
-const leaders=item.counts
-.map((count,digit)=>({digit,count}))
-.filter(x=>x.count===max)
-.map(x=>x.digit);
-
-document.getElementById("price_"+symbol).textContent=item.price;
-document.getElementById("last_"+symbol).textContent=item.last;
-document.getElementById("ticks_"+symbol).textContent=total;
-document.getElementById("top_"+symbol).textContent=
-total?leaders.join(" / "):"--";
-
-const display=document.getElementById("digits_"+symbol);
-display.innerHTML="";
-
-item.counts.forEach((count,digit)=>{
-const percent=total?count/total*100:0;
-display.innerHTML+=`
-<div class="digit">
-<b>${digit}</b><br>
-${count}<br>
-${percent.toFixed(0)}%
-<div class="bar" style="width:${percent}%"></div>
-</div>`;
-});
-}
-
-setup();
-connect();
+  function setConnection(text, good=false) {
+    $("connection").textContent = (good ? "● " : "● ") + text;
+    $("connection").style.color = good ? "#72f0a2" : "#ffb4b4";
+  }
+  function digitFromQuote(quote, pip) {
+    const decimals = Number.isFinite(pip) ? pip : 2;
+    const fixed = Number(quote).toFixed(decimals);
+    const digits = fixed.replace(/\D/g, "");
+    return Number(digits[digits.length - 1]);
+  }
+  function stats(symbol) {
+    const data = histories[symbol];
+    const counts = Array(10).fill(0);
+    data.forEach(d => counts[d]++);
+    let best = 0;
+    for (let i=1;i<10;i++) if (counts[i] > counts[best]) best = i;
+    return {counts,best,count:counts[best],rate:data.length ? counts[best]/data.length*100 : 0,total:data.length};
+  }
+  function renderSelected() {
+    const s = selected(), data = histories[s], st = stats(s);
+    $("tickCount").textContent = data.length + " ticks scanned";
+    $("lastDigit").textContent = data.length ? data[data.length-1] : "—";
+    if (data.length < 30) {
+      $("topDigit").textContent = "—";
+      $("signal").textContent = "COLLECTING DATA";
+      $("signal").style.background = "#39304f";
+      $("signal").style.color = "#d6c8ff";
+      $("explain").textContent = `Collecting live ticks for ${names[s]}. ${30-data.length} more ticks needed before showing a frequency leader.`;
+      $("topCount").textContent = "—";
+      $("topRate").textContent = "—";
+    } else {
+      $("topDigit").textContent = st.best;
+      $("signal").textContent = "MOST FREQUENT IN SAMPLE";
+      $("signal").style.background = "#123b2a";
+      $("signal").style.color = "#72f0a2";
+      $("explain").textContent = `Digit ${st.best} appeared ${st.count} times in the latest ${st.total} ticks for ${names[s]}. This is historical frequency, not a prediction.`;
+      $("topCount").textContent = st.count;
+      $("topRate").textContent = st.rate.toFixed(1)+"%";
+    }
+    $("bars").innerHTML = st.counts.map((n,i) => `<div class="baritem"><div class="track"><div class="fill" style="height:${st.total ? Math.max(2,n/st.total*100) : 2}%"></div></div>${i}<br>${n}</div>`).join("");
+    renderMarkets();
+  }
+  function renderMarkets() {
+    $("marketResults").innerHTML = symbols.map(s => {
+      const st=stats(s);
+      const result=st.total>=30 ? `Top digit: <b>${st.best}</b> · ${st.rate.toFixed(1)}% · ${st.total} ticks` : `Collecting data · ${st.total}/30 ticks`;
+      return `<div style="padding:8px 0;border-bottom:1px solid #303657"><b>${names[s]}</b><br>${result}</div>`;
+    }).join("");
+  }
+  function subscribe() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const targets = scanAll ? symbols : [selected()];
+    targets.forEach(symbol => {
+      ws.send(JSON.stringify({ticks: symbol, subscribe: 1}));
+    });
+    $("marketStatus").textContent = scanAll ? "Scanning all five markets" : "Scanning " + names[selected()];
+  }
+  function connect() {
+    if (ws && (ws.readyState===WebSocket.OPEN || ws.readyState===WebSocket.CONNECTING)) return;
+    clearTimeout(reconnectTimer);
+    setConnection("Connecting…");
+    try { ws = new WebSocket(WS_URL); }
+    catch(e) { setConnection("Connection error"); return; }
+    ws.onopen = () => {
+      setConnection("Connected",true);
+      subscribe();
+    };
+    ws.onmessage = event => {
+      let msg;
+      try { msg=JSON.parse(event.data); } catch(e) { return; }
+      if (msg.error) {
+        $("marketStatus").textContent = msg.error.message || "Feed error";
+        return;
+      }
+      if (msg.msg_type==="tick" && msg.tick) {
+        const t=msg.tick, symbol=t.symbol;
+        if (!histories[symbol]) return;
+        const pip = Number.isInteger(t.pip_size) ? t.pip_size : (pipSizes[symbol] ?? 2);
+        pipSizes[symbol]=pip;
+        const d=digitFromQuote(t.quote,pip);
+        histories[symbol].push(d);
+        if (histories[symbol].length>100) histories[symbol].shift();
+        if (symbol===selected()) renderSelected();
+        else renderMarkets();
+      }
+    };
+    ws.onerror = () => setConnection("Connection problem");
+    ws.onclose = () => {
+      setConnection("Disconnected");
+      if (running) reconnectTimer=setTimeout(connect,3000);
+    };
+  }
+  $("scanBtn").addEventListener("click", () => {
+    scanAll=false; running=true; connect();
+    if (ws && ws.readyState===WebSocket.OPEN) subscribe();
+  });
+  $("allBtn").addEventListener("click", () => {
+    scanAll=true; running=true; connect();
+    if (ws && ws.readyState===WebSocket.OPEN) subscribe();
+    $("marketStatus").textContent="Scanning all five markets";
+  });
+  $("market").addEventListener("change", () => {
+    if (running && !scanAll) {
+      if (ws && ws.readyState===WebSocket.OPEN) subscribe();
+    }
+    renderSelected();
+  });
+  window.addEventListener("beforeunload", () => { running=false; if(ws) ws.close(); });
+  renderSelected();
+})();
 </script>
 </body>
 </html>
