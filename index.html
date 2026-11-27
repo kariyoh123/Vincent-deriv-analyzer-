@@ -119,7 +119,7 @@ item.price=formatted;
 item.last=digit;
 item.digits.push(digit);
 
-if(item.digits.length>100)item.digits.shift();
+;
 
 item.counts=Array(10).fill(0);
 item.digits.forEach(d=>item.counts[d]++);
