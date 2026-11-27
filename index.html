@@ -1,187 +1,164 @@
-1
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vincent Deriv Analyzer</title>
 <style>
-body{background:#101827;color:white;font-family:Arial,sans-serif;margin:0;padding:18px}
-.container{max-width:600px;margin:auto}
-h1{color:#20d9a0;text-align:center}
-.card{background:#1d2b40;padding:16px;border-radius:12px;margin:14px 0}
-button,select{padding:13px;border:0;border-radius:7px;margin:5px;font-weight:bold}
-button{background:#16c994;color:#071b16}
-select{background:#34445c;color:white}
-.status{color:#ffcc55}
-.digits{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.digit{background:#34445c;padding:12px 4px;text-align:center;border-radius:8px}
-.number{font-size:23px;color:#20d9a0;font-weight:bold}
-.small{color:#aabbd0;font-size:13px}
+body{background:#101827;color:white;font-family:Arial;padding:15px}
+h1{text-align:center;color:#35d5a0}
+h2{color:#35d5a0}
+.status,.market{background:#1d2b40;padding:14px;margin:12px 0;border-radius:10px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:#293b54;padding:10px;border-radius:8px}
+.big{font-size:25px;color:#35d5a0;font-weight:bold}
+.digits{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.digit{background:#293b54;text-align:center;padding:8px 2px;border-radius:7px}
+.bar{height:5px;background:#35d5a0;margin-top:5px}
+button{background:#35d5a0;padding:12px;border:0;border-radius:8px;font-weight:bold}
+.note{font-size:12px;color:#bdc9d8;line-height:1.5}
 </style>
 </head>
 <body>
-<div class="container">
-<h1>VINCENT DERIV ANALYZER</h1>
-<p style="text-align:center">LIVE MATCHES & DIFFERS ANALYSIS</p>
-
-<div class="card">
-<h3>Connection</h3>
-<select id="symbol">
-<option value="R_100">Volatility 100 Index</option>
-<option value="R_75">Volatility 75 Index</option>
-<option value="R_50">Volatility 50 Index</option>
-<option value="R_25">Volatility 25 Index</option>
-<option value="R_10">Volatility 10 Index</option>
-</select>
-<br>
-<button onclick="connect()">CONNECT LIVE</button>
-<button onclick="disconnect()">DISCONNECT</button>
-<p class="status" id="status">Disconnected</p>
-</div>
-
-<div class="card">
-<h3>Latest Market Digit</h3>
-<div class="number" id="lastDigit">--</div>
-<p class="small" id="quote">Waiting for market data...</p>
-</div>
-
-<div class="card">
-<h3>Digit Frequency (Last 100 ticks)</h3>
-<div class="digits" id="digits"></div>
-</div>
-
-<div class="card">
-<h3>Matches & Differs Analysis</h3>
-<p>Select target digit:</p>
-<select id="target">
-<option value="0">Digit 0</option>
-<option value="1">Digit 1</option>
-<option value="2">Digit 2</option>
-<option value="3">Digit 3</option>
-<option value="4">Digit 4</option>
-<option value="5">Digit 5</option>
-<option value="6">Digit 6</option>
-<option value="7">Digit 7</option>
-<option value="8">Digit 8</option>
-<option value="9">Digit 9</option>
-</select>
-<p>Matches frequency: <b id="matches">0%</b></p>
-<p>Differs frequency: <b id="differs">0%</b></p>
-<p class="small" id="analysis">Waiting for enough ticks...</p>
-</div>
-
-<div class="card">
-<h3>Recent Digits</h3>
-<p id="history">No ticks received yet.</p>
-<button onclick="clearHistory()">CLEAR HISTORY</button>
-</div>
-</div>
+<h1>Vincent Deriv Analyzer</h1>
+<div class="status" id="status">Connecting...</div>
+<button onclick="reconnect()">Reconnect</button>
+<div id="markets"></div>
+<p class="note">The leading digit is based on the last 100 ticks. Historical frequency does not guarantee the next digit. This is an analysis tool, not a guaranteed trading signal.</p>
 
 <script>
-let socket=null;
-let ticks=[];
-let currentSymbol="R_100";
+const SYMBOLS=[
+{symbol:"R_10",name:"Volatility 10"},
+{symbol:"R_25",name:"Volatility 25"},
+{symbol:"R_50",name:"Volatility 50"},
+{symbol:"R_75",name:"Volatility 75"},
+{symbol:"R_100",name:"Volatility 100"}
+];
+
+let socket;
+let data={};
+
+SYMBOLS.forEach(m=>{
+data[m.symbol]={digits:[],price:"--",last:"--",counts:Array(10).fill(0)};
+});
+
+function setup(){
+const container=document.getElementById("markets");
+SYMBOLS.forEach(m=>{
+container.innerHTML+=`
+<div class="market">
+<h2>${m.name}</h2>
+<div class="stats">
+<div class="stat">Latest price<br><b id="price_${m.symbol}">--</b></div>
+<div class="stat">Latest digit<br><span class="big" id="last_${m.symbol}">--</span></div>
+<div class="stat">Ticks scanned<br><b id="ticks_${m.symbol}">0</b></div>
+<div class="stat">Most frequent digit<br><span class="big" id="top_${m.symbol}">--</span></div>
+</div>
+<h3>Digit frequency (0–9)</h3>
+<div class="digits" id="digits_${m.symbol}"></div>
+</div>`;
+});
+}
+
+function reconnect(){
+if(socket){
+socket.onclose=null;
+socket.close();
+}
+connect();
+}
 
 function connect(){
-disconnect();
-currentSymbol=document.getElementById("symbol").value;
 document.getElementById("status").textContent="Connecting...";
-
-
 socket=new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
 
-
-
 socket.onopen=()=>{
-document.getElementById("status").textContent="Connected - Waiting for ticks";
+document.getElementById("status").textContent="Connected — scanning five indices";
+SYMBOLS.forEach(m=>{
 socket.send(JSON.stringify({
-ticks:currentSymbol,
+ticks:m.symbol,
 subscribe:1
 }));
+});
 };
 
 socket.onmessage=(event)=>{
-const data=JSON.parse(event.data);
-if(data.error){
-document.getElementById("status").textContent="Error: "+data.error.message;
+const msg=JSON.parse(event.data);
+if(msg.error){
+document.getElementById("status").textContent="Error: "+msg.error.message;
 return;
 }
-if(data.tick){
-const t=data.tick;
-const precision=Number.isInteger(t.pip_size)?t.pip_size:2;
-const formatted=Number(t.quote).toFixed(precision);
-const digit=Number(formatted.slice(-1));
-ticks.push(digit);
-if(ticks.length>100)ticks.shift();
-document.getElementById("lastDigit").textContent=digit;
-document.getElementById("quote").textContent=
-"Price: "+formatted+" | "+currentSymbol;
-updateAnalysis();
+if(msg.msg_type==="tick"&&msg.tick){
+processTick(msg.tick);
 }
 };
 
 socket.onerror=()=>{
-document.getElementById("status").textContent="Connection error";
+document.getElementById("status").textContent="Connection error. Tap Reconnect.";
 };
 
 socket.onclose=()=>{
-document.getElementById("status").textContent="Disconnected";
+document.getElementById("status").textContent="Disconnected. Tap Reconnect.";
 };
 }
 
-function disconnect(){
-if(socket){
-socket.onclose=null;
-socket.close();
-socket=null;
-}
-document.getElementById("status").textContent="Disconnected";
+function processTick(tick){
+const symbol=tick.symbol;
+if(!data[symbol])return;
+
+const item=data[symbol];
+const price=Number(tick.quote);
+if(!Number.isFinite(price))return;
+
+const decimals=Number(tick.pip_size);
+const formatted=price.toFixed(Number.isFinite(decimals)?decimals:2);
+const digit=Number(formatted.replace(/\D/g,"").slice(-1));
+
+item.price=formatted;
+item.last=digit;
+item.digits.push(digit);
+
+if(item.digits.length>100)item.digits.shift();
+
+item.counts=Array(10).fill(0);
+item.digits.forEach(d=>item.counts[d]++);
+
+updateMarket(symbol);
 }
 
-function updateAnalysis(){
-let html="";
-for(let i=0;i<10;i++){
-const count=ticks.filter(x=>x===i).length;
-const percent=ticks.length?((count/ticks.length)*100).toFixed(1):0;
-html+=`<div class="digit">
-<b>${i}</b><br>${count}<br>
-<span class="small">${percent}%</span>
+function updateMarket(symbol){
+const item=data[symbol];
+const total=item.digits.length;
+const max=Math.max(...item.counts);
+const leaders=item.counts
+.map((count,digit)=>({digit,count}))
+.filter(x=>x.count===max)
+.map(x=>x.digit);
+
+document.getElementById("price_"+symbol).textContent=item.price;
+document.getElementById("last_"+symbol).textContent=item.last;
+document.getElementById("ticks_"+symbol).textContent=total;
+document.getElementById("top_"+symbol).textContent=
+total?leaders.join(" / "):"--";
+
+const display=document.getElementById("digits_"+symbol);
+display.innerHTML="";
+
+item.counts.forEach((count,digit)=>{
+const percent=total?count/total*100:0;
+display.innerHTML+=`
+<div class="digit">
+<b>${digit}</b><br>
+${count}<br>
+${percent.toFixed(0)}%
+<div class="bar" style="width:${percent}%"></div>
 </div>`;
-}
-document.getElementById("digits").innerHTML=html;
-
-const target=Number(document.getElementById("target").value);
-const count=ticks.filter(x=>x===target).length;
-const match=ticks.length?(count/ticks.length*100):0;
-document.getElementById("matches").textContent=match.toFixed(1)+"%";
-document.getElementById("differs").textContent=(100-match).toFixed(1)+"%";
-
-document.getElementById("analysis").textContent=
-ticks.length<20?
-"Collecting data: "+ticks.length+" / 20 ticks":
-"Historical frequency only. This is not a prediction or guarantee of the next tick.";
-
-document.getElementById("history").textContent=
-ticks.slice(-30).reverse().join(" | ");
-
-const counts=Array.from({length:10},(_,d)=>ticks.filter(x=>x===d).length);
-const maxCount=Math.max(0,...counts);
-const bestDigits=counts.map((c,d)=>c===maxCount?d:null).filter(d=>d!==null);
-const bestText=ticks.length===0?"No data yet":bestDigits.join(", ")+" ("+maxCount+" appearances)";
-document.getElementById("analysis").textContent+=" | Most frequent digit: "+bestText;}
-
-
-function clearHistory(){
-ticks=[];
-document.getElementById("lastDigit").textContent="--";
-document.getElementById("quote").textContent="Waiting for market data...";
-document.getElementById("history").textContent="No ticks received yet.";
-updateAnalysis();
+});
 }
 
-document.getElementById("target").addEventListener("change",updateAnalysis);
-updateAnalysis();
+setup();
+connect();
 </script>
 </body>
 </html>
