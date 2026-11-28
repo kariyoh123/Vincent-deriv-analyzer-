@@ -1,387 +1,316 @@
 
-(() => {
-  const WS_URL = "wss://api.derivws.com/trading/v1/options/ws/public";
-  const symbols = ["R_10", "R_25", "R_50", "R_75", "R_100"];
-  const names = {
-    R_10: "Volatility 10",
-    R_25: "Volatility 25",
-    R_50: "Volatility 50",
-    R_75: "Volatility 75",
-    R_100: "Volatility 100"
-  };
-
-  const histories = Object.fromEntries(symbols.map(s => [s, []]));
-  const pipSizes = {};
-  const historyLoaded = {};
-  const liveBuffers = Object.fromEntries(symbols.map(s => [s, []]));
-
-  let ws = null;
-  let running = false;
-  let scanAll = false;
-  let reconnectTimer = null;
-
-  const $ = id => document.getElementById(id);
-  const selected = () => $("market").value;
-  const MAX_TICKS = 5000;
-  const HISTORY_COUNT = 1000;
-  const TEST_WINDOW = 200;
-
-  function setConnection(message, good = false) {
-    $("connection").textContent = "● " + message;
-    $("connection").style.color = good ? "#72f0a2" : "#ffb4b4";
-  }
-
-  function extractDigit(quote, pip) {
-    const decimals = Number.isInteger(pip) ? pip : 2;
-    const fixed = Number(quote).toFixed(decimals);
-    return Number(fixed.replace(/\D/g, "").slice(-1));
-  }
-
-  function addDigit(symbol, digit) {
-    if (!Number.isInteger(digit) || digit < 0 || digit > 9) return;
-    histories[symbol].push(digit);
-    if (histories[symbol].length > MAX_TICKS) {
-      histories[symbol].shift();
-    }
-  }
-
-  function countsFor(data) {
-    const counts = Array(10).fill(0);
-    data.forEach(d => counts[d]++);
-    return counts;
-  }
-
-  function chooseBest(counts) {
-    let best = 0;
-    for (let i = 1; i < 10; i++) {
-      if (counts[i] > counts[best]) best = i;
-    }
-    return best;
-  }
-
-  // Rank digits using multiple historical windows.
-  function rankDigits(data) {
-    const recent = countsFor(data.slice(-200));
-    const medium = countsFor(data.slice(-1000));
-    const long = countsFor(data.slice(-5000));
-
-    const scores = Array(10).fill(0);
-
-    for (let i = 0; i < 10; i++) {
-      scores[i] =
-        (recent[i] / Math.max(1, Math.min(200, data.length))) * 0.5 +
-        (medium[i] / Math.max(1, Math.min(1000, data.length))) * 0.3 +
-        (long[i] / Math.max(1, data.length)) * 0.2;
-    }
-
-    const ranking = scores.map((score, digit) => ({
-      digit,
-      score
-    })).sort((a, b) => b.score - a.score);
-
-    return { ranking, recent, medium, long };
-  }
-
-  // Test whether a rolling frequency strategy beat the 10% baseline.
-  function backtest(data) {
-    if (data.length <= TEST_WINDOW) {
-      return { trials: 0, hits: 0, accuracy: 0 };
-    }
-
-    let hits = 0;
-    let trials = 0;
-
-    for (let i = TEST_WINDOW; i < data.length; i++) {
-      const previous = data.slice(i - TEST_WINDOW, i);
-      const candidate = chooseBest(countsFor(previous));
-
-      if (data[i] === candidate) hits++;
-      trials++;
-    }
-
-    return {
-      trials,
-      hits,
-      accuracy: trials ? hits / trials * 100 : 0
-    };
-  }
-
-  function renderBars(data) {
-    const counts = countsFor(data);
-    const total = data.length;
-
-    $("bars").innerHTML = counts.map((n, i) => `
-      <div class="baritem">
-        <div class="track">
-          <div class="fill" style="height:${
-            total ? Math.max(2, n / total * 100) : 2
-          }%"></div>
-        </div>
-        ${i}<br>${n}
-      </div>
-    `).join("");
-  }
-
-  function renderMarkets() {
-    $("marketResults").innerHTML = symbols.map(symbol => {
-      const data = histories[symbol];
-      const result = rankDigits(data);
-      const test = backtest(data);
-      const candidate = result.ranking[0];
-
-      let status = "Collecting historical data";
-
-      if (data.length > TEST_WINDOW) {
-        status = `Candidate: <b>${candidate.digit}</b> · Backtest: ${test.accuracy.toFixed(1)}% · ${test.trials} tests`;
-      }
-
-      return `
-        <div style="padding:10px 0;border-bottom:1px solid #ffffff35">
-          <b>${names[symbol]}</b><br>
-          ${status}<br>
-          <small>${data.length} ticks stored</small>
-        </div>
-      `;
-    }).join("");
-  }
-
-  function renderSelected() {
-    const symbol = selected();
-    const data = histories[symbol];
-    const result = rankDigits(data);
-    const test = backtest(data);
-    const candidate = result.ranking[0];
-
-    $("tickCount").textContent = data.length + " ticks scanned";
-    $("lastDigit").textContent = data.length ? data[data.length - 1] : "—";
-
-    if (data.length < TEST_WINDOW + 1) {
-      $("topDigit").textContent = "—";
-      $("signal").textContent = "COLLECTING EVIDENCE";
-      $("signal").style.background = "#39304f";
-      $("signal").style.color = "#d6c8ff";
-      $("explain").textContent =
-        `Collecting data for ${names[symbol]}. At least ${TEST_WINDOW + 1} ticks are needed for backtesting.`;
-      $("topCount").textContent = "—";
-      $("topRate").textContent = "—";
-    } else {
-      $("topDigit").textContent = candidate.digit;
-      $("topCount").textContent = result.recent[candidate.digit];
-      $("topRate").textContent =
-        (result.recent[candidate.digit] / Math.min(200, data.length) * 100).toFixed(1) + "%";
-
-      const beatsBaseline = test.accuracy > 10;
-
-      $("signal").textContent = beatsBaseline
-        ? "ABOVE 10% BASELINE — TEST FURTHER"
-        : "NO DEMONSTRATED ADVANTAGE";
-
-      $("signal").style.background = beatsBaseline ? "#123b2a" : "#51332b";
-      $("signal").style.color = beatsBaseline ? "#72f0a2" : "#ffd0a8";
-
-      $("explain").textContent =
-        `Digit ${candidate.digit} is the current statistical candidate. ` +
-        `A rolling historical test recorded ${test.hits} hits from ${test.trials} trials ` +
-        `(${test.accuracy.toFixed(1)}%). Random-digit baseline: approximately 10%.`;
-    }
-
-    renderBars(data);
-    renderMarkets();
-  }
-
-  function requestHistory(symbol) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-    historyLoaded[symbol] = false;
-    liveBuffers[symbol] = [];
-
-    ws.send(JSON.stringify({
-      ticks_history: symbol,
-      count: HISTORY_COUNT,
-      end: "latest",
-      style: "ticks"
-    }));
-
-    $("marketStatus").textContent = "Loading history for " + names[symbol];
-  }
-
-  function subscribe(symbol) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-    ws.send(JSON.stringify({
-      ticks: symbol,
-      subscribe: 1
-    }));
-  }
-
-  function subscribeTargets() {
-    const targets = scanAll ? symbols : [selected()];
-
-    targets.forEach(symbol => requestHistory(symbol));
-    targets.forEach(symbol => subscribe(symbol));
-
-    $("marketStatus").textContent = scanAll
-      ? "Scanning all five markets"
-      : "Scanning " + names[selected()];
-  }
-
-  function connect() {
-    if (ws && (
-      ws.readyState === WebSocket.OPEN ||
-      ws.readyState === WebSocket.CONNECTING
-    )) return;
-
-    clearTimeout(reconnectTimer);
-    setConnection("Connecting…");
-
-    try {
-      ws = new WebSocket(WS_URL);
-    } catch (error) {
-      setConnection("Connection error");
-      return;
-    }
-
-    ws.onopen = () => {
-      setConnection("Connected", true);
-      subscribeTargets();
-    };
-
-    ws.onmessage = event => {
-      let msg;
-
-      try {
-        msg = JSON.parse(event.data);
-      } catch (error) {
-        return;
-      }
-
-      if (msg.error) {
-        $("marketStatus").textContent =
-          msg.error.message || "Market feed error";
-        return;
-      }
-
-      // Historical tick response.
-      if (msg.msg_type === "history" && msg.history) {
-        const symbol = msg.echo_req?.ticks_history;
-        if (!symbols.includes(symbol)) return;
-
-        const pip = Number.isInteger(msg.pip_size)
-          ? msg.pip_size
-          : 2;
-
-        pipSizes[symbol] = pip;
-
-        const prices = msg.history.prices || [];
-        const historicalDigits = prices.map(price =>
-          extractDigit(price, pip)
-        );
-
-        histories[symbol] = historicalDigits.slice(-MAX_TICKS);
-
-        // Add any live ticks received while history was loading.
-        liveBuffers[symbol].forEach(digit => addDigit(symbol, digit));
-        liveBuffers[symbol] = [];
-        historyLoaded[symbol] = true;
-
-        $("marketStatus").textContent =
-          "History loaded: " + names[symbol];
-
-        renderSelected();
-       return;
-
-      // Live tick response.
-      if (msg.msg_type === "tick" && msg.tick) {
-        const tick = msg.tick;
-        const symbol = tick.symbol;
-
-        if (!symbols.includes(symbol)) return;
-        if (tick.quote === undefined) return;
-
-        const pip = Number.isInteger(tick.pip_size)
-          ? tick.pip_size
-          : (pipSizes[symbol] ?? 2);
-
-        pipSizes[symbol] = pip;
-
-        const digit = extractDigit(tick.quote, pip);
-
-        if (!historyLoaded[symbol]) {
-          liveBuffers[symbol].push(digit);
-          if (liveBuffers[symbol].length > 1000) {
-            liveBuffers[symbol].shift();
-          }
-        } else {
-          addDigit(symbol, digit);
-        }
-
-        if (symbol === selected()) renderSelected();
-        else renderMarkets();
-      }
-    };
-
-    ws.onerror = () => setConnection("Connection problem");
-
-    ws.onclose = () => {
-      setConnection("Disconnected");
-
-      if (running) {
-        reconnectTimer = setTimeout(connect, 3000);
-      }
-    };
-  }
-
-  function startScanning(all = false) {
-    scanAll = all;
-    running = true;
-    $("scanBtn").textContent = "STOP SCANNING";
-    connect();
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      subscribeTargets();
-    }
-  }
-
-  function stopScanning() {
-    running = false;
-    clearTimeout(reconnectTimer);
-
-    if (ws) {
-      const oldSocket = ws;
-      ws = null;
-      oldSocket.close();
-    }
-
-    $("scanBtn").textContent = "START LIVE SCANNING";
-    $("marketStatus").textContent = "Scanning stopped";
-    setConnection("Disconnected");
-  }
-
-  $("scanBtn").addEventListener("click", () => {
-    if (running) stopScanning();
-    else startScanning(false);
-  });
-
-  $("allBtn").addEventListener("click", () => {
-    if (running) stopScanning();
-    startScanning(true);
-  });
-
-  $("market").addEventListener("change", () => {
-    renderSelected();
-
-    if (running && !scanAll) {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
-    }
-  });
-
-  window.addEventListener("beforeunload", () => {
-    running = false;
-    clearTimeout(reconnectTimer);
-    if (ws) ws.close();
-  });
-
-  renderSelected();
-})();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vincent Deriv Analyzer</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:16px;background:#142e70;color:white;font-family:Arial,sans-serif}
+h2{text-align:center}
+.panel{background:#ffffff18;border:1px solid #ffffff30;border-radius:14px;padding:16px;margin:12px 0}
+button,select{width:100%;padding:14px;margin:6px 0;border:0;border-radius:9px;font-weight:bold}
+button{background:#16c784;color:#092b30}
+select{background:#263e7e;color:white}
+.big{text-align:center;font-size:65px;font-weight:bold;color:#72f0a2}
+.small{color:#c8d7ff}
+.bar{height:12px;background:#ffffff25;border-radius:8px;overflow:hidden}
+.fill{height:100%;background:#16c784;width:0%}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:#ffffff12;padding:12px;border-radius:10px;text-align:center}
+</style>
+</head>
+<body>
+
+<h2>VINCENT DERIV ANALYZER</h2>
+<p id="connection">● Disconnected</p>
+
+<div class="panel">
+<h3>Select Volatility Index</h3>
+<select id="market">
+<option value="R_10">Volatility 10</option>
+<option value="R_25">Volatility 25</option>
+<option value="R_50">Volatility 50</option>
+<option value="R_75">Volatility 75</option>
+<option value="R_100">Volatility 100</option>
+</select>
+<button id="scanBtn">START LIVE SCANNING</button>
+<button id="allBtn">SCAN ALL FIVE MARKETS</button>
+<p id="marketStatus">Waiting to scan</p>
+</div>
+
+<div class="panel">
+<h3>SCAN PROGRESS</h3>
+<div class="bar"><div class="fill" id="progress"></div></div>
+<p id="progressText">0%</p>
+</div>
+
+<div class="panel">
+<h3>PREDICTED DIGIT CANDIDATE</h3>
+<div class="big" id="topDigit">—</div>
+<p style="text-align:center" id="signal">WAITING FOR DATA</p>
+<div class="grid">
+<div class="stat">Last digit<br><b id="lastDigit">—</b></div>
+<div class="stat">Ticks scanned<br><b id="tickCount">0</b></div>
+<div class="stat">Recent appearances<br><b id="topCount">—</b></div>
+<div class="stat">Recent frequency<br><b id="topRate">—</b></div>
+</div>
+<p id="explain" class="small">Start scanning to collect live market data.</p>
+</div>
+
+<div class="panel">
+<h3>DIGIT FREQUENCY</h3>
+<div id="bars"></div>
+</div>
+
+<div class="panel">
+<h3>ALL FIVE MARKETS</h3>
+<div id="marketResults">Waiting for data...</div>
+</div>
+
+<script>
+const WS_URL="wss://api.derivws.com/trading/v1/options/ws/public";
+const symbols=["R_10","R_25","R_50","R_75","R_100"];
+const names={
+R_10:"Volatility 10",
+R_25:"Volatility 25",
+R_50:"Volatility 50",
+R_75:"Volatility 75",
+R_100:"Volatility 100"
+};
+
+const histories=Object.fromEntries(symbols.map(s=>[s,[]]));
+const loaded={};
+const buffers=Object.fromEntries(symbols.map(s=>[s,[]]));
+const pipSizes={};
+const $=id=>document.getElementById(id);
+
+let ws=null;
+let running=false;
+let scanAll=false;
+let reconnect=null;
+
+const selected=()=>$("market").value;
+const MAX=5000;
+const REQUIRED=200;
+
+function connection(msg){
+$("connection").textContent="● "+msg;
+}
+
+function digitFrom(price,pip){
+return Number(Number(price).toFixed(pip).replace(/\D/g,"").slice(-1));
+}
+
+function add(symbol,digit){
+histories[symbol].push(digit);
+if(histories[symbol].length>MAX)histories[symbol].shift();
+}
+
+function counts(data){
+let c=Array(10).fill(0);
+data.forEach(d=>c[d]++);
+return c;
+}
+
+function rank(data){
+let recent=counts(data.slice(-200));
+let medium=counts(data.slice(-1000));
+let long=counts(data);
+let scores=Array.from({length:10},(_,i)=>({
+digit:i,
+score:
+.5*recent[i]/Math.max(1,Math.min(200,data.length))+
+.3*medium[i]/Math.max(1,Math.min(1000,data.length))+
+.2*long[i]/Math.max(1,data.length)
+}));
+scores.sort((a,b)=>b.score-a.score);
+return {recent,best:scores[0]};
+}
+
+function backtest(data){
+let hits=0,trials=0;
+for(let i=200;i<data.length;i++){
+let c=counts(data.slice(i-200,i));
+let best=c.indexOf(Math.max(...c));
+if(data[i]===best)hits++;
+trials++;
+}
+return {hits,trials,rate:trials?100*hits/trials:0};
+}
+
+function render(){
+let s=selected();
+let data=histories[s];
+let result=rank(data);
+let candidate=result.best.digit;
+let ready=data.length>=REQUIRED;
+let progress=Math.min(100,data.length/REQUIRED*100);
+
+$("progress").style.width=progress+"%";
+$("progressText").textContent=Math.round(progress)+"%";
+$("topDigit").textContent=ready?candidate:"—";
+$("lastDigit").textContent=data.length?data[data.length-1]:"—";
+$("tickCount").textContent=data.length;
+$("topCount").textContent=ready?result.recent[candidate]:"—";
+$("topRate").textContent=ready?
+(result.recent[candidate]/Math.min(200,data.length)*100).toFixed(1)+"%":"—";
+
+let test=backtest(data);
+
+$("signal").textContent=!ready?
+"COLLECTING DATA":
+test.trials&&test.rate>10?
+"ABOVE 10% BASELINE — TEST FURTHER":
+"NO DEMONSTRATED ADVANTAGE";
+
+$("explain").textContent=ready?
+"Digit "+candidate+" is the current statistical candidate. Historical backtest: "+test.rate.toFixed(1)+"% across "+test.trials+" trials. This is not a guaranteed winning digit.":
+"Collecting live ticks. At least 200 ticks are needed.";
+
+let c=counts(data);
+$("bars").innerHTML=c.map((n,i)=>`
+<div style="margin:9px 0">
+<b>Digit ${i}: ${n}</b>
+<div class="bar"><div class="fill" style="width:${data.length?n/data.length*100:0}%"></div></div>
+</div>`).join("");
+
+$("marketResults").innerHTML=symbols.map(symbol=>{
+let d=histories[symbol];
+let r=rank(d);
+return `<p><b>${names[symbol]}</b><br>
+Candidate: ${d.length>=REQUIRED?r.best.digit:"Collecting"} 
+<br>${d.length} ticks</p><hr>`;
+}).join("");
+}
+
+function requestHistory(s){
+if(!ws||ws.readyState!==1)return;
+loaded[s]=false;
+buffers[s]=[];
+ws.send(JSON.stringify({
+ticks_history:s,count:1000,end:"latest",style:"ticks"
+}));
+}
+
+function subscribe(s){
+if(ws&&ws.readyState===1){
+ws.send(JSON.stringify({ticks:s,subscribe:1}));
+}
+}
+
+function targets(){
+let list=scanAll?symbols:[selected()];
+list.forEach(requestHistory);
+list.forEach(subscribe);
+$("marketStatus").textContent="Scanning "+list.map(s=>names[s]).join(", ");
+}
+
+function connect(){
+if(ws&&(ws.readyState===0||ws.readyState===1))return;
+clearTimeout(reconnect);
+connection("Connecting");
+
+ws=new WebSocket(WS_URL);
+
+ws.onopen=()=>{
+connection("Connected");
+targets();
+};
+
+ws.onmessage=e=>{
+let m;
+try{m=JSON.parse(e.data)}catch{return}
+
+if(m.error){
+$("marketStatus").textContent=m.error.message;
+return;
+}
+
+if(m.msg_type==="history"&&m.history){
+let s=m.echo_req.ticks_history;
+if(!symbols.includes(s))return;
+
+let pip=m.pip_size??2;
+pipSizes[s]=pip;
+
+histories[s]=(m.history.prices||[]).map(p=>digitFrom(p,pip));
+buffers[s].forEach(d=>add(s,d));
+buffers[s]=[];
+loaded[s]=true;
+render();
+return;
+}
+
+if(m.msg_type==="tick"&&m.tick){
+let t=m.tick;
+let s=t.symbol;
+if(!symbols.includes(s))return;
+
+let d=digitFrom(t.quote,t.pip_size??pipSizes[s]??2);
+
+if(!loaded[s]){
+buffers[s].push(d);
+}else{
+add(s,d);
+}
+render();
+}
+};
+
+ws.onerror=()=>connection("Connection problem");
+
+ws.onclose=()=>{
+connection("Disconnected");
+if(running)reconnect=setTimeout(connect,3000);
+};
+}
+
+function start(all){
+scanAll=all;
+running=true;
+$("scanBtn").textContent="STOP SCANNING";
+connect();
+if(ws&&ws.readyState===1)targets();
+}
+
+function stop(){
+running=false;
+clearTimeout(reconnect);
+if(ws){
+let old=ws;
+ws=null;
+old.close();
+}
+$("scanBtn").textContent="START LIVE SCANNING";
+$("marketStatus").textContent="Scanning stopped";
+connection("Disconnected");
+}
+
+$("scanBtn").onclick=()=>{
+running?stop():start(false);
+};
+
+$("allBtn").onclick=()=>{
+if(running)stop();
+start(true);
+};
+
+$("market").onchange=()=>{
+render();
+if(running&&!scanAll){
+if(ws)ws.close();
+}
+};
+
+window.onbeforeunload=()=>{
+running=false;
+clearTimeout(reconnect);
+if(ws)ws.close();
+};
+
+render();
+</script>
+</body>
+</html>
