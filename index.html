@@ -1,246 +1,387 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vincent Deriv Analyzer</title>
-<style>
-:root{color-scheme:dark;--bg:#142e70;--panel:rgba(255,255,255,.10);--panel2:rgba(255,255,255,.14);--cyan:#83d8ff;--muted:#d2ddf4;--line:rgba(255,255,255,.18);--green:#22c55e}
-*{box-sizing:border-box}
-body{margin:0;padding:0;background:linear-gradient(145deg,#243d91 0%,#254f91 52%,#17618b 100%);font-family:Arial,sans-serif;color:#f8fbff;min-height:100vh}
-.wrap{max-width:780px;margin:0 auto;padding:22px 18px 42px}
-.hero{text-align:center;padding:18px 4px 24px}
-.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:1px solid #ffffff38;background:#ffffff18;border-radius:30px;color:#d9efff;font-size:13px;font-weight:700}
-h1{text-align:center;font-size:clamp(32px,7vw,54px);line-height:1.12;letter-spacing:-1.5px;margin:30px auto 18px;max-width:680px}
-h1 span{color:var(--cyan)}
-.sub{text-align:center;color:#d9e5ff;font-size:16px;line-height:1.65;max-width:640px;margin:0 auto 24px}
-.hero-actions{max-width:540px;margin:26px auto 0}
-.open-deriv{display:block;text-align:center;text-decoration:none;background:#ff4354;color:white;font-weight:800;font-size:18px;padding:19px 16px;border-radius:16px;box-shadow:0 12px 30px #ed334b40}
-.statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:24px 0}
-.stat{background:#ffffff18;border:1px solid #ffffff28;border-radius:20px;padding:20px 12px;text-align:center;backdrop-filter:blur(8px)}
-.stat strong{display:block;color:var(--cyan);font-size:30px;margin-bottom:7px}
-.stat span{font-size:13px;color:#e1eaff;font-weight:700}
-.market-chips{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin:18px 0 28px}
-.chip{border:1px solid #ffffff42;background:#ffffff18;color:#f3f7ff;padding:9px 15px;border-radius:30px;font-size:13px;font-weight:700}
-.section-title{font-size:20px;margin:0 0 6px}
-.section-sub{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 14px}
-.panel{background:rgba(14,30,75,.36);border:1px solid var(--line);border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 12px 28px #07163b20;backdrop-filter:blur(10px)}
-.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-label{display:block;color:#dce8ff;font-size:12px;font-weight:700;margin-bottom:8px;letter-spacing:.5px}
-select,button{font:inherit;border-radius:12px;padding:13px;border:1px solid #ffffff35;background:#263f83;color:#fff}
-select{width:100%;font-size:15px}
-button{cursor:pointer;font-weight:bold}
-.primary{width:100%;background:#ff4354;border:0;margin-top:13px;padding:16px;font-size:16px}
-.digitbox{text-align:center;padding:24px 12px}
-.kicker{color:var(--cyan);font-size:12px;font-weight:bold;letter-spacing:1.5px}
-.digit{font-size:clamp(76px,17vw,104px);line-height:1.05;font-weight:800;margin:10px 0;color:#fff}
-.signal{display:inline-block;padding:9px 15px;border-radius:30px;background:#123b2a;color:#72f0a2;font-size:12px;font-weight:bold}
-.note{color:#d0def7;font-size:12px;line-height:1.6;margin-top:12px}
-.statgrid .stat{min-width:0}
-.bars{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;align-items:end;margin-top:16px}
-.baritem{text-align:center;font-size:11px;color:#e1eaff}
-.track{height:72px;background:#142b62aa;border-radius:7px;display:flex;align-items:end;overflow:hidden;margin-bottom:5px}
-.fill{width:100%;background:linear-gradient(#8ee0ff,#478ce5);border-radius:7px 7px 0 0;min-height:2px}
-.status{font-size:13px;color:#d7e4ff}
-.status b{color:#fff}
-.smallbtn{font-size:12px;padding:9px 12px;background:#ffffff20}
-.feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
-.feature{padding:18px;border-radius:18px;background:#ffffff16;border:1px solid #ffffff25}
-.feature-icon{width:42px;height:42px;border-radius:12px;background:#64b9ed35;display:grid;place-items:center;font-size:21px;margin-bottom:12px}
-.feature b{display:block;margin-bottom:7px}
-.feature p{margin:0;color:#d7e4ff;font-size:13px;line-height:1.5}
-.footer-note{text-align:center;color:#d2ddf4;font-size:12px;line-height:1.6;padding:10px 8px}
-@media(max-width:430px){.wrap{padding:16px 14px 34px}.hero{padding-top:12px}h1{margin-top:25px}.panel{padding:15px}.feature-grid{grid-template-columns:1fr}.bars{gap:4px}.baritem{font-size:10px}}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header class="hero">
-    <div class="eyebrow">✧ &nbsp; AUTOMATED DIGIT ANALYSIS FOR DERIV</div>
-    <h1>Live statistical insights for <span>Volatility Indices</span></h1>
-    <p class="sub">Vincent Deriv Analyzer monitors live market ticks and displays digit-frequency statistics to help you study recent market activity.</p>
-    <div class="hero-actions"><a class="open-deriv" href="https://deriv.com/" target="_blank" rel="noopener">↗ &nbsp; Open Deriv</a></div>
-  </header>
 
-  <div class="statgrid">
-    <div class="stat"><strong>5</strong><span>VOLATILITY MARKETS</span></div>
-    <div class="stat"><strong>10</strong><span>DIGITS TRACKED</span></div>
-    <div class="stat"><strong>LIVE</strong><span>TICK MONITORING</span></div>
-    <div class="stat"><strong>100</strong><span>RECENT TICKS PER MARKET</span></div>
-  </div>
-  <div class="market-chips"><span class="chip">V10</span><span class="chip">V25</span><span class="chip">V50</span><span class="chip">V75</span><span class="chip">V100</span></div>
-
-  <section class="panel">
-    <h2 class="section-title">Live Market Scanner</h2>
-    <p class="section-sub">Choose one market or scan all five volatility indices together.</p>
-    <label for="market">SELECT VOLATILITY INDEX</label>
-    <select id="market">
-      <option value="R_10">Volatility 10 Index</option>
-      <option value="R_25">Volatility 25 Index</option>
-      <option value="R_50">Volatility 50 Index</option>
-      <option value="R_75">Volatility 75 Index</option>
-      <option value="R_100">Volatility 100 Index</option>
-    </select>
-    <div class="row" style="margin-top:12px">
-      <span class="status" id="connection">● Disconnected</span>
-      <span class="status" id="marketStatus">Waiting to scan</span>
-    </div>
-    <button class="primary" id="scanBtn">START LIVE SCANNING</button>
-  </section>
-
-  <section class="panel digitbox">
-    <div class="kicker">TOP HISTORICAL DIGIT</div>
-    <div class="digit" id="topDigit">—</div>
-    <div class="signal" id="signal">COLLECTING DATA</div>
-    <div class="note" id="explain">The scanner needs at least 30 live ticks before showing the most frequent digit.</div>
-  </section>
-
-  <section class="panel">
-    <div class="row"><b>LIVE DIGIT ANALYSIS</b><span class="status" id="tickCount">0 ticks scanned</span></div>
-    <div class="statgrid">
-      <div class="stat"><strong id="lastDigit">—</strong><span>LAST DIGIT</span></div>
-      <div class="stat"><strong id="topCount">—</strong><span>TOP DIGIT COUNT</span></div>
-      <div class="stat"><strong id="topRate">—</strong><span>TOP DIGIT %</span></div>
-    </div>
-    <div class="bars" id="bars"></div>
-  </section>
-
-  <section class="panel">
-    <div class="row"><b>FIVE-MARKET SCAN</b><button class="smallbtn" id="allBtn">SCAN ALL 5</button></div>
-    <div id="marketResults" class="note">Start scanning to collect live data from the selected market, or choose “Scan all 5”.</div>
-  </section>
-
-  <h2 class="section-title" style="text-align:center;margin-top:28px">Analyzer Features</h2>
-  <div class="feature-grid">
-    <div class="feature"><div class="feature-icon">◎</div><b>Automated Scanning</b><p>Continuously analyzes digit patterns while the scanner is running.</p></div>
-    <div class="feature"><div class="feature-icon">⌖</div><b>Live Statistics</b><p>See digit frequency, recent counts and the latest tick.</p></div>
-    <div class="feature"><div class="feature-icon">◷</div><b>Five Markets</b><p>Monitor Volatility 10, 25, 50, 75 and 100 indices.</p></div>
-    <div class="feature"><div class="feature-icon">✧</div><b>Historical Analysis</b><p>Compare observed frequencies without claiming certainty about the next digit.</p></div>
-  </div>
-  <div class="footer-note">Important: The top digit is the most frequent digit in the recent sample, not a guaranteed next-digit prediction or verified trading signal. Past frequency does not guarantee future results.</div>
-</div>
-
-<script>
 (() => {
   const WS_URL = "wss://api.derivws.com/trading/v1/options/ws/public";
-  const symbols = ["R_10","R_25","R_50","R_75","R_100"];
-  const names = {R_10:"Volatility 10",R_25:"Volatility 25",R_50:"Volatility 50",R_75:"Volatility 75",R_100:"Volatility 100"};
+  const symbols = ["R_10", "R_25", "R_50", "R_75", "R_100"];
+  const names = {
+    R_10: "Volatility 10",
+    R_25: "Volatility 25",
+    R_50: "Volatility 50",
+    R_75: "Volatility 75",
+    R_100: "Volatility 100"
+  };
+
   const histories = Object.fromEntries(symbols.map(s => [s, []]));
   const pipSizes = {};
-  let ws = null, running = false, scanAll = false, reconnectTimer = null;
+  const historyLoaded = {};
+  const liveBuffers = Object.fromEntries(symbols.map(s => [s, []]));
+
+  let ws = null;
+  let running = false;
+  let scanAll = false;
+  let reconnectTimer = null;
+
   const $ = id => document.getElementById(id);
   const selected = () => $("market").value;
+  const MAX_TICKS = 5000;
+  const HISTORY_COUNT = 1000;
+  const TEST_WINDOW = 200;
 
-  function setConnection(text, good=false) {
-    $("connection").textContent = "● " + text;
+  function setConnection(message, good = false) {
+    $("connection").textContent = "● " + message;
     $("connection").style.color = good ? "#72f0a2" : "#ffb4b4";
   }
-  function digitFromQuote(quote, pip) {
-    const decimals = Number.isFinite(pip) ? pip : 2;
+
+  function extractDigit(quote, pip) {
+    const decimals = Number.isInteger(pip) ? pip : 2;
     const fixed = Number(quote).toFixed(decimals);
-    const digits = fixed.replace(/\D/g, "");
-    return Number(digits[digits.length - 1]);
+    return Number(fixed.replace(/\D/g, "").slice(-1));
   }
-  function stats(symbol) {
-    const data = histories[symbol];
+
+  function addDigit(symbol, digit) {
+    if (!Number.isInteger(digit) || digit < 0 || digit > 9) return;
+    histories[symbol].push(digit);
+    if (histories[symbol].length > MAX_TICKS) {
+      histories[symbol].shift();
+    }
+  }
+
+  function countsFor(data) {
     const counts = Array(10).fill(0);
     data.forEach(d => counts[d]++);
-    let best = 0;
-    for (let i=1;i<10;i++) if (counts[i] > counts[best]) best = i;
-    return {counts,best,count:counts[best],rate:data.length ? counts[best]/data.length*100 : 0,total:data.length};
+    return counts;
   }
+
+  function chooseBest(counts) {
+    let best = 0;
+    for (let i = 1; i < 10; i++) {
+      if (counts[i] > counts[best]) best = i;
+    }
+    return best;
+  }
+
+  // Rank digits using multiple historical windows.
+  function rankDigits(data) {
+    const recent = countsFor(data.slice(-200));
+    const medium = countsFor(data.slice(-1000));
+    const long = countsFor(data.slice(-5000));
+
+    const scores = Array(10).fill(0);
+
+    for (let i = 0; i < 10; i++) {
+      scores[i] =
+        (recent[i] / Math.max(1, Math.min(200, data.length))) * 0.5 +
+        (medium[i] / Math.max(1, Math.min(1000, data.length))) * 0.3 +
+        (long[i] / Math.max(1, data.length)) * 0.2;
+    }
+
+    const ranking = scores.map((score, digit) => ({
+      digit,
+      score
+    })).sort((a, b) => b.score - a.score);
+
+    return { ranking, recent, medium, long };
+  }
+
+  // Test whether a rolling frequency strategy beat the 10% baseline.
+  function backtest(data) {
+    if (data.length <= TEST_WINDOW) {
+      return { trials: 0, hits: 0, accuracy: 0 };
+    }
+
+    let hits = 0;
+    let trials = 0;
+
+    for (let i = TEST_WINDOW; i < data.length; i++) {
+      const previous = data.slice(i - TEST_WINDOW, i);
+      const candidate = chooseBest(countsFor(previous));
+
+      if (data[i] === candidate) hits++;
+      trials++;
+    }
+
+    return {
+      trials,
+      hits,
+      accuracy: trials ? hits / trials * 100 : 0
+    };
+  }
+
+  function renderBars(data) {
+    const counts = countsFor(data);
+    const total = data.length;
+
+    $("bars").innerHTML = counts.map((n, i) => `
+      <div class="baritem">
+        <div class="track">
+          <div class="fill" style="height:${
+            total ? Math.max(2, n / total * 100) : 2
+          }%"></div>
+        </div>
+        ${i}<br>${n}
+      </div>
+    `).join("");
+  }
+
+  function renderMarkets() {
+    $("marketResults").innerHTML = symbols.map(symbol => {
+      const data = histories[symbol];
+      const result = rankDigits(data);
+      const test = backtest(data);
+      const candidate = result.ranking[0];
+
+      let status = "Collecting historical data";
+
+      if (data.length > TEST_WINDOW) {
+        status = `Candidate: <b>${candidate.digit}</b> · Backtest: ${test.accuracy.toFixed(1)}% · ${test.trials} tests`;
+      }
+
+      return `
+        <div style="padding:10px 0;border-bottom:1px solid #ffffff35">
+          <b>${names[symbol]}</b><br>
+          ${status}<br>
+          <small>${data.length} ticks stored</small>
+        </div>
+      `;
+    }).join("");
+  }
+
   function renderSelected() {
-    const s = selected(), data = histories[s], st = stats(s);
+    const symbol = selected();
+    const data = histories[symbol];
+    const result = rankDigits(data);
+    const test = backtest(data);
+    const candidate = result.ranking[0];
+
     $("tickCount").textContent = data.length + " ticks scanned";
-    $("lastDigit").textContent = data.length ? data[data.length-1] : "—";
-    if (data.length < 30) {
+    $("lastDigit").textContent = data.length ? data[data.length - 1] : "—";
+
+    if (data.length < TEST_WINDOW + 1) {
       $("topDigit").textContent = "—";
-      $("signal").textContent = "COLLECTING DATA";
+      $("signal").textContent = "COLLECTING EVIDENCE";
       $("signal").style.background = "#39304f";
       $("signal").style.color = "#d6c8ff";
-      $("explain").textContent = `Collecting live ticks for ${names[s]}. ${30-data.length} more ticks needed before showing a frequency leader.`;
+      $("explain").textContent =
+        `Collecting data for ${names[symbol]}. At least ${TEST_WINDOW + 1} ticks are needed for backtesting.`;
       $("topCount").textContent = "—";
       $("topRate").textContent = "—";
     } else {
-      $("topDigit").textContent = st.best;
-      $("signal").textContent = "MOST FREQUENT IN SAMPLE";
-      $("signal").style.background = "#123b2a";
-      $("signal").style.color = "#72f0a2";
-      $("explain").textContent = `Digit ${st.best} appeared ${st.count} times in the latest ${st.total} ticks for ${names[s]}. This is historical frequency, not a prediction.`;
-      $("topCount").textContent = st.count;
-      $("topRate").textContent = st.rate.toFixed(1)+"%";
+      $("topDigit").textContent = candidate.digit;
+      $("topCount").textContent = result.recent[candidate.digit];
+      $("topRate").textContent =
+        (result.recent[candidate.digit] / Math.min(200, data.length) * 100).toFixed(1) + "%";
+
+      const beatsBaseline = test.accuracy > 10;
+
+      $("signal").textContent = beatsBaseline
+        ? "ABOVE 10% BASELINE — TEST FURTHER"
+        : "NO DEMONSTRATED ADVANTAGE";
+
+      $("signal").style.background = beatsBaseline ? "#123b2a" : "#51332b";
+      $("signal").style.color = beatsBaseline ? "#72f0a2" : "#ffd0a8";
+
+      $("explain").textContent =
+        `Digit ${candidate.digit} is the current statistical candidate. ` +
+        `A rolling historical test recorded ${test.hits} hits from ${test.trials} trials ` +
+        `(${test.accuracy.toFixed(1)}%). Random-digit baseline: approximately 10%.`;
     }
-    $("bars").innerHTML = st.counts.map((n,i) => `<div class="baritem"><div class="track"><div class="fill" style="height:${st.total ? Math.max(2,n/st.total*100) : 2}%"></div></div>${i}<br>${n}</div>`).join("");
+
+    renderBars(data);
     renderMarkets();
   }
-  function renderMarkets() {
-    $("marketResults").innerHTML = symbols.map(s => {
-      const st=stats(s);
-      const result=st.total>=30 ? `Top digit: <b>${st.best}</b> · ${st.rate.toFixed(1)}% · ${st.total} ticks` : `Collecting data · ${st.total}/30 ticks`;
-      return `<div style="padding:8px 0;border-bottom:1px solid #ffffff35"><b>${names[s]}</b><br>${result}</div>`;
-    }).join("");
-  }
-  function subscribe() {
+
+  function requestHistory(symbol) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    const targets = scanAll ? symbols : [selected()];
-    targets.forEach(symbol => {
-      ws.send(JSON.stringify({ticks: symbol, subscribe: 1}));
-    });
-    $("marketStatus").textContent = scanAll ? "Scanning all five markets" : "Scanning " + names[selected()];
+
+    historyLoaded[symbol] = false;
+    liveBuffers[symbol] = [];
+
+    ws.send(JSON.stringify({
+      ticks_history: symbol,
+      count: HISTORY_COUNT,
+      end: "latest",
+      style: "ticks"
+    }));
+
+    $("marketStatus").textContent = "Loading history for " + names[symbol];
   }
+
+  function subscribe(symbol) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(JSON.stringify({
+      ticks: symbol,
+      subscribe: 1
+    }));
+  }
+
+  function subscribeTargets() {
+    const targets = scanAll ? symbols : [selected()];
+
+    targets.forEach(symbol => requestHistory(symbol));
+    targets.forEach(symbol => subscribe(symbol));
+
+    $("marketStatus").textContent = scanAll
+      ? "Scanning all five markets"
+      : "Scanning " + names[selected()];
+  }
+
   function connect() {
-    if (ws && (ws.readyState===WebSocket.OPEN || ws.readyState===WebSocket.CONNECTING)) return;
+    if (ws && (
+      ws.readyState === WebSocket.OPEN ||
+      ws.readyState === WebSocket.CONNECTING
+    )) return;
+
     clearTimeout(reconnectTimer);
     setConnection("Connecting…");
-    try { ws = new WebSocket(WS_URL); }
-    catch(e) { setConnection("Connection error"); return; }
+
+    try {
+      ws = new WebSocket(WS_URL);
+    } catch (error) {
+      setConnection("Connection error");
+      return;
+    }
+
     ws.onopen = () => {
-      setConnection("Connected",true);
-      subscribe();
+      setConnection("Connected", true);
+      subscribeTargets();
     };
+
     ws.onmessage = event => {
       let msg;
-      try { msg=JSON.parse(event.data); } catch(e) { return; }
-      if (msg.error) {
-        $("marketStatus").textContent = msg.error.message || "Feed error";
+
+      try {
+        msg = JSON.parse(event.data);
+      } catch (error) {
         return;
       }
-      if (msg.msg_type==="tick" && msg.tick) {
-        const t=msg.tick, symbol=t.symbol;
-        if (!histories[symbol]) return;
-        const pip = Number.isInteger(t.pip_size) ? t.pip_size : (pipSizes[symbol] ?? 2);
-        pipSizes[symbol]=pip;
-        const d=digitFromQuote(t.quote,pip);
-        histories[symbol].push(d);
-        if (histories[symbol].length>100) histories[symbol].shift();
-        if (symbol===selected()) renderSelected();
+
+      if (msg.error) {
+        $("marketStatus").textContent =
+          msg.error.message || "Market feed error";
+        return;
+      }
+
+      // Historical tick response.
+      if (msg.msg_type === "history" && msg.history) {
+        const symbol = msg.echo_req?.ticks_history;
+        if (!symbols.includes(symbol)) return;
+
+        const pip = Number.isInteger(msg.pip_size)
+          ? msg.pip_size
+          : 2;
+
+        pipSizes[symbol] = pip;
+
+        const prices = msg.history.prices || [];
+        const historicalDigits = prices.map(price =>
+          extractDigit(price, pip)
+        );
+
+        histories[symbol] = historicalDigits.slice(-MAX_TICKS);
+
+        // Add any live ticks received while history was loading.
+        liveBuffers[symbol].forEach(digit => addDigit(symbol, digit));
+        liveBuffers[symbol] = [];
+        historyLoaded[symbol] = true;
+
+        $("marketStatus").textContent =
+          "History loaded: " + names[symbol];
+
+        renderSelected();
+       return;
+
+      // Live tick response.
+      if (msg.msg_type === "tick" && msg.tick) {
+        const tick = msg.tick;
+        const symbol = tick.symbol;
+
+        if (!symbols.includes(symbol)) return;
+        if (tick.quote === undefined) return;
+
+        const pip = Number.isInteger(tick.pip_size)
+          ? tick.pip_size
+          : (pipSizes[symbol] ?? 2);
+
+        pipSizes[symbol] = pip;
+
+        const digit = extractDigit(tick.quote, pip);
+
+        if (!historyLoaded[symbol]) {
+          liveBuffers[symbol].push(digit);
+          if (liveBuffers[symbol].length > 1000) {
+            liveBuffers[symbol].shift();
+          }
+        } else {
+          addDigit(symbol, digit);
+        }
+
+        if (symbol === selected()) renderSelected();
         else renderMarkets();
       }
     };
+
     ws.onerror = () => setConnection("Connection problem");
+
     ws.onclose = () => {
       setConnection("Disconnected");
-      if (running) reconnectTimer=setTimeout(connect,3000);
+
+      if (running) {
+        reconnectTimer = setTimeout(connect, 3000);
+      }
     };
   }
-  $("scanBtn").addEventListener("click", () => {
-    scanAll=false; running=true; connect();
-    if (ws && ws.readyState===WebSocket.OPEN) subscribe();
-  });
-  $("allBtn").addEventListener("click", () => {
-    scanAll=true; running=true; connect();
-    if (ws && ws.readyState===WebSocket.OPEN) subscribe();
-    $("marketStatus").textContent="Scanning all five markets";
-  });
-  $("market").addEventListener("change", () => {
-    if (running && !scanAll) {
-      if (ws && ws.readyState===WebSocket.OPEN) subscribe();
+
+  function startScanning(all = false) {
+    scanAll = all;
+    running = true;
+    $("scanBtn").textContent = "STOP SCANNING";
+    connect();
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      subscribeTargets();
     }
-    renderSelected();
+  }
+
+  function stopScanning() {
+    running = false;
+    clearTimeout(reconnectTimer);
+
+    if (ws) {
+      const oldSocket = ws;
+      ws = null;
+      oldSocket.close();
+    }
+
+    $("scanBtn").textContent = "START LIVE SCANNING";
+    $("marketStatus").textContent = "Scanning stopped";
+    setConnection("Disconnected");
+  }
+
+  $("scanBtn").addEventListener("click", () => {
+    if (running) stopScanning();
+    else startScanning(false);
   });
-  window.addEventListener("beforeunload", () => { running=false; if(ws) ws.close(); });
+
+  $("allBtn").addEventListener("click", () => {
+    if (running) stopScanning();
+    startScanning(true);
+  });
+
+  $("market").addEventListener("change", () => {
+    renderSelected();
+
+    if (running && !scanAll) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    }
+  });
+
+  window.addEventListener("beforeunload", () => {
+    running = false;
+    clearTimeout(reconnectTimer);
+    if (ws) ws.close();
+  });
+
   renderSelected();
 })();
-</script>
-</body>
-</html>
